@@ -118,12 +118,13 @@ Generators spawn an actor into a free adjacent cell on a per-generator timer.
 - **Map is always larger than the viewport.** Camera follows the player (in
   half-cells) and clamps at level edges.
 - **Viewport: a fixed 18x10 blocks** (`VIEW_BLOCK_COLS/ROWS`) = 36x20
-  half-cells, matching the C64 playfield. `modRender.FitViewport` only picks
-  the half-cell render size (`gCellPts`, clamped 8-26pt -> blocks ~50pt) to
-  fill the tighter window axis. The map is square, so a wide window keeps side
-  gutter - a side HUD panel (arcade-style) is the eventual fix. Resize + PLAY
-  to refit.
-- **HUD: dedicated rows below the viewport** (health, score, keys, potions).
+  half-cells, matching the C64 playfield. `modRender.FitViewport` scales the
+  half-cell render size (`gCellPts`) so the playfield fills the full window
+  **height** - modern screens are wide, so height is the binding axis and the
+  spare width goes to the HUD. It only shrinks below that if the playfield +
+  HUD panel would overrun the width. Resize + PLAY to refit.
+- **HUD: a text column to the right of the playfield** (`HUD_PANEL_PTS` of
+  reserved width) - GAUNTLEX / health / score / keys / potions, arcade-style.
 
 [remake]: https://github.com/mJastrzebski6/Gauntlet-I-c64
 [mame]: https://github.com/mamedev/mame/blob/master/src/mame/atari/gauntlet.cpp
@@ -149,10 +150,10 @@ Generators spawn an actor into a free adjacent cell on a per-generator timer.
   - `modGame`: player footprint top-left `gPlHR/gPlHC`, one-half-cell steps
     with 2x2 collision + wall-slide; `CenterCamera` clamps to
     `[1, MAP_ROWS - VIEW_ROWS + 1]`.
-  - `modRender`: `FitViewport` picks `gCellPts`; `RenderFrame` blits
-    `BlockAtHC(gCamR+r-1, gCamC+c-1)` (walls/exit render as 2x2 quads) and
-    stamps the player's 2x2 footprint.
-  - HUD rows below the viewport: health / score / keys / potions placeholders.
+  - `modRender`: `FitViewport` picks `gCellPts` to fill window height;
+    `RenderFrame` blits `BlockAtHC(gCamR+r-1, gCamC+c-1)` (walls/exit render as
+    2x2 quads), stamps the player's 2x2 footprint, and `DrawHud` writes the
+    right-hand text column (health / score / keys / potions placeholders).
   - *History: the first M1 pass used a single 16px grid with whole-cell moves;
     reworked to the half-cell model to match the C64's sub-block movement.*
 

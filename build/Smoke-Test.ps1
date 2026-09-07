@@ -61,8 +61,17 @@ try {
     $s = State
 
     Check "viewport is 36x20 half-cells" ($s.vc -eq $VC -and $s.vr -eq $VR) "$($s.vc)x$($s.vr)"
-    Check "fit cell size in [8..26]pt"   ($s.cell -ge 8 -and $s.cell -le 26) $s.cell
+    Check "fit cell size in [8..60]pt"   ($s.cell -ge 8 -and $s.cell -le 60) $s.cell
     Check "row height tracks cell size"  ([math]::Abs([double]$ws.Rows(1).Height - $s.cell) -le 1.5) "$([math]::Round([double]$ws.Rows(1).Height,1)) vs $($s.cell)"
+
+    $uh = [double]$excel.ActiveWindow.UsableHeight
+    Check "playfield fills window height" (
+        [math]::Abs($VR * $s.cell - $uh) -le ($s.cell + 1) -or $s.cell -ge 60 -or $s.cell -le 8
+    ) "$([math]::Round($VR * $s.cell))pt of ${uh}pt"
+
+    Check "HUD panel shows HEALTH" ([string]$ws.Cells.Item(4, $VC + 2).Value2 -like 'HEALTH*') `
+        ([string]$ws.Cells.Item(4, $VC + 2).Value2)
+
     Check "camera clamped to 1,1"        ($s.camR -eq 1 -and $s.camC -eq 1) "$($s.camR),$($s.camC)"
 
     Check "top-left block is 2x2 wall" (

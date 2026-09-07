@@ -17,20 +17,22 @@ Public Const MAP_COLS       As Long = 64          ' = MAP_BLOCK_COLS * 2 (half-c
 Public Const MAP_ROWS       As Long = 64
 
 ' ---- Viewport ----
-'  The C64 playfield is ~18 x 10 blocks. We show exactly that; FitViewport
-'  scales the half-cell size to fill the tighter window axis (letterboxing the
-'  other - the map is square, a wide window keeps side gutter until we add a
-'  side HUD panel).
+'  The C64 playfield is ~18 x 10 blocks. We show exactly that. FitViewport
+'  scales the half-cell size to fill the full window HEIGHT (modern screens are
+'  wide, so height is the binding axis); the HUD lives in the spare width to
+'  the right of the playfield.
 Public Const VIEW_BLOCK_COLS As Long = 18
 Public Const VIEW_BLOCK_ROWS As Long = 10
 Public Const VIEW_COLS       As Long = VIEW_BLOCK_COLS * 2    ' 36 half-cells
 Public Const VIEW_ROWS       As Long = VIEW_BLOCK_ROWS * 2    ' 20 half-cells
 
-Public Const CELL_DEFAULT_PTS As Double = 16#     ' half-cell size when the window can't be measured
+Public Const CELL_DEFAULT_PTS As Double = 20#     ' half-cell size when the window can't be measured
 Public Const CELL_MIN_PTS     As Double = 8#
-Public Const CELL_MAX_PTS     As Double = 26#     ' half-cell -> block renders up to 52pt
-Public Const HUD_PTS          As Double = 64#     ' vertical band reserved below the viewport
-Public Const HUD_ROW_PTS      As Double = 16#
+Public Const CELL_MAX_PTS     As Double = 60#     ' generous ceiling; real windows land ~24-46
+
+Public Const HUD_PANEL_PTS    As Double = 220#    ' width reserved right of the playfield for the HUD
+Public Const HUD_COL_WIDTH    As Double = 24#     ' chars, for the HUD text column
+Public Const HUD_GAP_COLS     As Long = 1         ' blank columns between playfield and HUD
 
 Public gCellPts As Double                         ' current half-cell render size, points
 
