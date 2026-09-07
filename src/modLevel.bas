@@ -5,7 +5,8 @@ Option Explicit
 '  Level: load a map from a (very hidden) worksheet into a
 '  string grid, and answer collision queries against it.
 '
-'  gMap(row, col) is 1-based, one character per cell.
+'  gMap(row, col) is 1-based, one character per cell, sized to
+'  the MAP (not the viewport). Off-map reads as solid wall.
 ' ============================================================
 
 Public gMap()   As String
@@ -17,15 +18,15 @@ Public Sub LoadLevel(ByVal sheetName As String)
     Set ws = ThisWorkbook.Worksheets(sheetName)
 
     Dim raw As Variant
-    raw = ws.Range(ws.Cells(1, 1), ws.Cells(VIEW_ROWS, VIEW_COLS)).Value
+    raw = ws.Range(ws.Cells(1, 1), ws.Cells(MAP_ROWS, MAP_COLS)).Value
 
-    ReDim gMap(1 To VIEW_ROWS, 1 To VIEW_COLS)
+    ReDim gMap(1 To MAP_ROWS, 1 To MAP_COLS)
     gStartR = 2: gStartC = 2                 ' safe fallback
     gExitR = 0:  gExitC = 0
 
     Dim r As Long, c As Long, ch As String
-    For r = 1 To VIEW_ROWS
-        For c = 1 To VIEW_COLS
+    For r = 1 To MAP_ROWS
+        For c = 1 To MAP_COLS
             ch = Left$(CStr(raw(r, c)) & " ", 1)
             Select Case ch
                 Case T_WALL
@@ -45,7 +46,7 @@ End Sub
 
 ' Off-grid counts as solid.
 Public Function IsWall(ByVal r As Long, ByVal c As Long) As Boolean
-    If r < 1 Or r > VIEW_ROWS Or c < 1 Or c > VIEW_COLS Then
+    If r < 1 Or r > MAP_ROWS Or c < 1 Or c > MAP_COLS Then
         IsWall = True
     Else
         IsWall = (gMap(r, c) = T_WALL)

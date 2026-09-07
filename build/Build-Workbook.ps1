@@ -20,9 +20,8 @@ $ctClassModule    = 2
 $xlVeryHidden     = 2
 $msoShapeRectangle = 1
 
-$VIEW_ROWS = 25
-$VIEW_COLS = 40
-$CELL_PTS  = 18
+$MAP_ROWS  = 32          # full level grid stamped onto each level sheet
+$MAP_COLS  = 32
 
 $excel = New-Object -ComObject Excel.Application
 $excel.Visible = $false
@@ -34,10 +33,8 @@ try {
 
     if (Test-Path $Out) {
         $wb = $excel.Workbooks.Open($Out)
-        foreach ($comp in @($wb.VBProject.VBComponents)) {
-            if ($comp.Type -eq $ctStdModule -or $comp.Type -eq $ctClassModule) {
-                $wb.VBProject.VBComponents.Remove($comp)
-            }
+        if ($wb.ReadOnly) {
+            throw "gauntlex.xlsm opened read-only - it is open in another Excel window. Close it and re-run."
         }
     } else {
         $wb = $excel.Workbooks.Add()
@@ -55,8 +52,12 @@ try {
     $screen.Visible = -1
     $screen.Cells.Clear() | Out-Null
     foreach ($sh in @($screen.Shapes)) { $sh.Delete() }
-    $btn = $screen.Shapes.AddShape($msoShapeRectangle, 6, ($VIEW_ROWS + 4) * $CELL_PTS, 160, 30)
-    $btn.TextFrame2.TextRange.Text = "PLAY  >  StartGauntlex"
+    # Anchored at A1 (top-left of the viewport). StartGauntlex hides it while
+    # the loop runs and shows it again on exit, so it doubles as "restart".
+    $btn = $screen.Shapes.AddShape($msoShapeRectangle, 2, 2, 150, 28)
+    $btn.Name = 'btnPlay'
+    $btn.Placement = 3          # xlFreeFloating - don't move/size with cells
+    $btn.TextFrame2.TextRange.Text = "PLAY"
     $btn.OnAction = "StartGauntlex"
 
     # ---- Levels ----
@@ -65,9 +66,9 @@ try {
         $sheet = Ensure-Sheet $name
         $sheet.Cells.Clear() | Out-Null
         $lines = Get-Content -LiteralPath $_.FullName
-        for ($r = 0; $r -lt $VIEW_ROWS; $r++) {
+        for ($r = 0; $r -lt $MAP_ROWS; $r++) {
             $line = if ($r -lt $lines.Count) { [string]$lines[$r] } else { '' }
-            for ($c = 0; $c -lt $VIEW_COLS; $c++) {
+            for ($c = 0; $c -lt $MAP_COLS; $c++) {
                 $ch = if ($c -lt $line.Length) { [string]$line[$c] } else { '.' }
                 if ($ch -eq ' ') { $ch = '.' }
                 $sheet.Cells.Item($r + 1, $c + 1).Value2 = $ch
@@ -78,9 +79,46 @@ try {
     }
 
     # ---- VBA modules ----
-    Get-ChildItem (Join-Path $Root 'src') -Include '*.bas','*.cls' -File -Recurse | ForEach-Object {
-        $wb.VBProject.VBComponents.Import($_.FullName) | Out-Null
-        Write-Host "  module $($_.BaseName)"
+    # Overwrite code in place when the module already exists: Remove + re-Import
+    # of a same-named module in one session does not commit (the import is
+    # dropped, the stale module kept). VBE also needs CRLF, not LF.
+    $srcFiles = Get-ChildItem (Join-Path $Root 'src') -Include '*.bas','*.cls' -File -Recurse
+    $srcNames = @()
+    $tmpDir = Join-Path ([IO.Path]::GetTempPath()) ('gx_' + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $tmpDir | Out-Null
+    try {
+        foreach ($f in $srcFiles) {
+            $name = [IO.Path]::GetFileNameWithoutExtension($f.FullName)
+            $srcNames += $name
+            $text = [IO.File]::ReadAllText($f.FullName) -replace "`r`n", "`n" -replace "`n", "`r`n"
+
+            $comp = $null
+            foreach ($c in $wb.VBProject.VBComponents) { if ($c.Name -eq $name) { $comp = $c; break } }
+
+            if ($comp -and $f.Extension -eq '.bas') {
+                $body = ($text -split "`r`n" | Where-Object { $_ -notmatch '^Attribute\s+VB_' }) -join "`r`n"
+                $cm = $comp.CodeModule
+                if ($cm.CountOfLines -gt 0) { $cm.DeleteLines(1, $cm.CountOfLines) }
+                $cm.AddFromString($body)
+                Write-Host "  module $name  (replaced)"
+            } else {
+                if ($comp) { $wb.VBProject.VBComponents.Remove($comp) }
+                $tmp = Join-Path $tmpDir $f.Name
+                [IO.File]::WriteAllText($tmp, $text, (New-Object Text.UTF8Encoding($false)))
+                $wb.VBProject.VBComponents.Import($tmp) | Out-Null
+                Write-Host "  module $name  (imported)"
+            }
+        }
+    } finally {
+        Remove-Item -Recurse -Force $tmpDir
+    }
+
+    # drop std/class modules that no longer have a source file
+    foreach ($c in @($wb.VBProject.VBComponents)) {
+        if (($c.Type -eq $ctStdModule -or $c.Type -eq $ctClassModule) -and ($srcNames -notcontains $c.Name)) {
+            Write-Host "  module $($c.Name)  (removed - no source)"
+            $wb.VBProject.VBComponents.Remove($c)
+        }
     }
 
     # ---- drop any stray default sheets ----
@@ -90,8 +128,15 @@ try {
         }
     }
 
+    # sanity: catch a stale / truncated module import before we ship the workbook
+    $gm = $wb.VBProject.VBComponents('modGame').CodeModule
+    if ($gm.Lines(1, $gm.CountOfLines) -notmatch 'Sub DebugStep') {
+        throw "modGame looks stale (no DebugStep) - module replace failed"
+    }
+
     $screen.Activate()
     if (Test-Path $Out) { $wb.Save() } else { $wb.SaveAs($Out, $xlMacroEnabled) }
+    if (-not $wb.Saved) { throw "save did not persist - is gauntlex.xlsm open elsewhere?" }
     Write-Host "Built $Out"
 }
 finally {

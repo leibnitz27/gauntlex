@@ -115,9 +115,13 @@ Generators spawn an actor into a free adjacent cell on a per-generator timer.
   sub-cell grid is skipped — Excel blits whole cells and cannot sub-cell-scroll,
   so it buys almost nothing here. Revisit only if actor overlap / "half in a
   doorway" feel turns out to matter.
-- **Viewport: ~24x15 Excel cells** — roomier than the arcade's ~20x11 (screen
-  space is free in Excel), still small enough that scrolling matters on a 32x32
-  map.
+- **Viewport fills the Excel window**, capped at the 32x32 map:
+  `modRender.FitViewport` picks a square cell size (`gCellPts`, clamped
+  12-48pt) that fills the tighter window axis against the whole map, then how
+  many whole cells fit (`gViewCols/gViewRows`, capped at `MAP`). The looser
+  axis scrolls. Resize the window and hit PLAY again to refit. The map is
+  square, so a very wide monitor still leaves side gutter once cells hit
+  48pt - a side HUD panel (arcade-style) is the eventual fix.
 - **HUD: dedicated rows below the viewport** (health, score, keys, potions).
 
 [remake]: https://github.com/mJastrzebski6/Gauntlet-I-c64
@@ -131,17 +135,19 @@ Generators spawn an actor into a free adjacent cell on a per-generator timer.
       slide, one hand-drawn maze with spawn + exit. *(Viewport == map, no
       camera — the simplification M1 removes.)*
 
-- [ ] **M1 — camera & world.** Decouple the map from the view:
-  - `modConfig`: `VIEW_COLS/ROWS` → **24 x 15**; add `MAP_COLS/ROWS` (up to
-    **32 x 32**).
-  - `modLevel`: load into `gMap` sized to the *level*, not the viewport; a
-    level sheet holds the full map. Add a bigger hand-drawn test level that
-    exceeds the viewport in both axes.
-  - `modGame`: track camera top-left `gCamR/gCamC`; after the player moves,
-    recentre on the player and **clamp** to `[1, MAP_ROWS - VIEW_ROWS + 1]`
+- [x] **M1 — camera & world.** Map decoupled from the view; follow-camera
+      recentres on the player and clamps at level edges; `modRender` blits the
+      camera's window; HUD rows below the viewport. Verified by
+      `build\Smoke-Test.ps1` (camera scroll + clamp + view-relative player).
+  - `modConfig`: `MAP_COLS/ROWS` (32 x 32); `gViewCols/gViewRows` set at
+    runtime (see the viewport note above).
+  - `modLevel`: `gMap` sized to `MAP`, not the viewport; a level sheet holds
+    the full map. `levels/L01.txt` is a 32 x 32 maze that exceeds the view.
+  - `modGame`: camera top-left `gCamR/gCamC`; after each move, `CenterCamera`
+    recentres on the player and clamps to `[1, MAP_ROWS - gViewRows + 1]`
     (and the column equivalent).
-  - `modRender`: blit the `VIEW_ROWS x VIEW_COLS` window at `gCamR/gCamC`
-    into the fixed viewport range; draw the player at
+  - `modRender`: `FitViewport` sizes the view; `RenderInit` builds the range;
+    `RenderFrame` blits `gMap(gCamR+r-1, gCamC+c-1)` and draws the player at
     `(gPlR - gCamR + 1, gPlC - gCamC + 1)`.
   - HUD rows below the viewport: health / score / keys / potions placeholders.
 
