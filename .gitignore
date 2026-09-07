@@ -5,6 +5,11 @@ gauntlex.xlsm
 ~$*.xls*
 *.tmp
 
+# Loose screenshots / reference images dropped in the repo root
+# (move keepers into reference/ to track them)
+/*.png
+/*.webp
+
 # Editor / OS
 .DS_Store
 Thumbs.db

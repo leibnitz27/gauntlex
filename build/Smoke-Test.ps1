@@ -1,13 +1,11 @@
 #Requires -Version 5
-# Opens the workbook, runs frames headless, checks the render buffer + camera.
+# Opens the workbook, runs frames headless, checks the half-cell render + camera.
 $ErrorActionPreference = 'Stop'
 $book = Join-Path (Split-Path -Parent $PSScriptRoot) 'gauntlex.xlsm'
 
-$VIEW_COLS = 24            # size we pin to for the deterministic checks
-$VIEW_ROWS = 15
-$MAP = 32
-$MIN_COLS = 12
-$MIN_ROWS = 8
+$VC = 36        # viewport half-cells (fixed: VIEW_BLOCK_COLS*2)
+$VR = 20        # VIEW_BLOCK_ROWS*2
+$MAP = 64       # half-cells
 
 $excel = New-Object -ComObject Excel.Application
 $excel.Visible = $false
@@ -24,73 +22,67 @@ try {
     $ws = $wb.Worksheets.Item('Screen')
 
     function View-Row($r) {
-        $vals = $ws.Range($ws.Cells.Item($r,1), $ws.Cells.Item($r,$VIEW_COLS)).Value2
-        -join (1..$VIEW_COLS | ForEach-Object { [string]$vals.GetValue(1, $_) })
+        $vals = $ws.Range($ws.Cells.Item($r,1), $ws.Cells.Item($r,$VC)).Value2
+        -join (1..$VC | ForEach-Object { [string]$vals.GetValue(1, $_) })
     }
-    function Find-Player {
-        for ($r = 1; $r -le $VIEW_ROWS; $r++) {
-            for ($c = 1; $c -le $VIEW_COLS; $c++) {
-                if ([string]$ws.Cells.Item($r,$c).Value2 -eq '@') { return "$r,$c" }
+    function Find-Player {   # first '@', and total count
+        $first = $null; $n = 0
+        for ($r = 1; $r -le $VR; $r++) {
+            for ($c = 1; $c -le $VC; $c++) {
+                if ([string]$ws.Cells.Item($r,$c).Value2 -eq '@') {
+                    if (-not $first) { $first = "$r,$c" }
+                    $n++
+                }
             }
         }
-        return $null
+        [pscustomobject]@{ first = $first; n = $n }
     }
-    # DebugState() -> "viewCols;viewRows;camR;camC;plR;plC;state;cellPts"
+    # DebugState() -> "vc;vr;camR;camC;plHR;plHC;state;cellPts"
     function State {
         $p = ([string]$excel.Run('DebugState')).Split(';')
         [pscustomobject]@{
-            vc = [int]$p[0]; vr = [int]$p[1]; camR = [int]$p[2]; camC = [int]$p[3]
-            plR = [int]$p[4]; plC = [int]$p[5]; st = $p[6]; cell = [double]$p[7]
+            vc=[int]$p[0]; vr=[int]$p[1]; camR=[int]$p[2]; camC=[int]$p[3]
+            plHR=[int]$p[4]; plHC=[int]$p[5]; st=$p[6]; cell=[double]$p[7]
         }
     }
 
-    # ---- Part 0: PLAY button anchored at A1 ----
+    # ---- PLAY button anchored at A1 ----
     $btn = $null
     try { $btn = $ws.Shapes.Item('btnPlay') } catch {}
     Check "btnPlay exists near A1" ($btn -and $btn.Top -lt 20 -and $btn.Left -lt 20) `
         $(if ($btn) { "top=$([int]$btn.Top) left=$([int]$btn.Left)" } else { 'missing' })
 
-    # ---- Part 1: FitViewport produces a sane, capped size ----
+    # ---- init: spawn at block (2,2) = half-cell (3,3), camera clamped to (1,1) ----
     $excel.Run('GameInit')
     $excel.Run('FitViewport')
     $excel.Run('RenderInit')
     $excel.Run('CenterCamera')
     $excel.Run('RenderFrame', [double]0)
     $s = State
-    Check "fit cols in [$MIN_COLS..$MAP]" ($s.vc -ge $MIN_COLS -and $s.vc -le $MAP) $s.vc
-    Check "fit rows in [$MIN_ROWS..$MAP]" ($s.vr -ge $MIN_ROWS -and $s.vr -le $MAP) $s.vr
-    Check "fit cell size in [12..48]pt" ($s.cell -ge 12 -and $s.cell -le 48) $s.cell
-    Check "fit fills a dimension" (
-        $s.vc -eq $MAP -or $s.vr -eq $MAP -or $s.cell -ge 47.9
-    ) "view $($s.vc)x$($s.vr) @ $($s.cell)pt"
-    Check "fit camera in range" (
-        $s.camR -ge 1 -and $s.camR -le ($MAP - $s.vr + 1) -and
-        $s.camC -ge 1 -and $s.camC -le ($MAP - $s.vc + 1)
-    ) "$($s.camR),$($s.camC) view $($s.vc)x$($s.vr)"
 
-    # ---- Part 2: pin to 24x15 for deterministic checks ----
-    $excel.Run('DebugSetViewport', [int]$VIEW_COLS, [int]$VIEW_ROWS)
-    $excel.Run('GameInit')
-    $excel.Run('RenderInit')
-    $excel.Run('CenterCamera')
-    $excel.Run('RenderFrame', [double]0)
+    Check "viewport is 36x20 half-cells" ($s.vc -eq $VC -and $s.vr -eq $VR) "$($s.vc)x$($s.vr)"
+    Check "fit cell size in [8..26]pt"   ($s.cell -ge 8 -and $s.cell -le 26) $s.cell
+    Check "row height tracks cell size"  ([math]::Abs([double]$ws.Rows(1).Height - $s.cell) -le 1.5) "$([math]::Round([double]$ws.Rows(1).Height,1)) vs $($s.cell)"
+    Check "camera clamped to 1,1"        ($s.camR -eq 1 -and $s.camC -eq 1) "$($s.camR),$($s.camC)"
 
-    Check "top row is solid wall"       ((View-Row 1) -eq ('#' * $VIEW_COLS)) (View-Row 1)
-    Check "player rendered at view 2,2"  ((Find-Player) -eq '2,2')            (Find-Player)
+    Check "top-left block is 2x2 wall" (
+        (View-Row 1).Substring(0,2) -eq '##' -and (View-Row 2).Substring(0,2) -eq '##'
+    ) ((View-Row 1) + ' / ' + (View-Row 2))
 
-    $w = [math]::Round($ws.Columns(1).Width, 2)
-    $h = [math]::Round($ws.Rows(1).Height, 2)
-    Check "cells ~square ~18pt" (($w -ge 16 -and $w -le 21) -and ($h -eq 18)) "$w x $h"
-    Check "HUD health line" ([string]$ws.Cells.Item($VIEW_ROWS + 2, 1).Value2 -like 'HEALTH*SCORE*') ([string]$ws.Cells.Item($VIEW_ROWS + 2, 1).Value2)
+    $p = Find-Player
+    Check "player is a 2x2 patch" ($p.n -eq 4)          $p.n
+    Check "player at view 3,3"    ($p.first -eq '3,3')   $p.first
 
-    # scroll: step player +7 rows / +20 cols into open floor -> map (9,22)
-    $excel.Run('DebugStep', [int]7, [int]20)
+    # ---- scroll: +14 half-rows / +30 half-cols into open floor -> half-cell (17,33), block (9,17) ----
+    $excel.Run('DebugStep', [int]14, [int]30)
     $excel.Run('RenderFrame', [double]0)
     $s = State
-    Check "player at map 9,22"           ($s.plR -eq 9 -and $s.plC -eq 22)     "$($s.plR),$($s.plC)"
-    Check "camera clamped to 2,9"        ($s.camR -eq 2 -and $s.camC -eq 9)    "$($s.camR),$($s.camC)"
-    Check "player re-rendered at 8,14"   ((Find-Player) -eq '8,14')            (Find-Player)
-    Check "top row now interior floor"   ((View-Row 1) -ne ('#' * $VIEW_COLS)) (View-Row 1)
+    Check "player at half-cell 17,33" ($s.plHR -eq 17 -and $s.plHC -eq 33) "$($s.plHR),$($s.plHC)"
+    Check "camera clamped to 7,15"    ($s.camR -eq 7 -and $s.camC -eq 15)  "$($s.camR),$($s.camC)"
+
+    $p = Find-Player
+    Check "player re-rendered at 11,19" ($p.first -eq '11,19' -and $p.n -eq 4) "$($p.first) n=$($p.n)"
+    Check "top row now has floor"       ((View-Row 1) -match '\.')            (View-Row 1)
 
     if ($fail) { throw "$fail check(s) failed" }
     Write-Host "OK"

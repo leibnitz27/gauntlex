@@ -2,22 +2,21 @@ Attribute VB_Name = "modRender"
 Option Explicit
 
 ' ============================================================
-'  Render: the camera's window of the map -> the viewport range.
-'  One array blit per frame. Cell interior/font colour is set
-'  once in RenderInit, never per frame.
+'  Render: the camera's half-cell window of the map -> the
+'  viewport range. One array blit per frame; colours set once
+'  in RenderInit.
 '
-'  FitViewport picks a square cell size that fills the Excel
-'  window (one axis exact, the other scrolls) and how many
-'  whole cells fit, capped at the map. RenderInit then builds
-'  the range/buffer at gCellPts / gViewCols / gViewRows.
+'  The viewport is a fixed VIEW_COLS x VIEW_ROWS half-cells
+'  (= VIEW_BLOCK_COLS x VIEW_BLOCK_ROWS blocks). FitViewport
+'  only picks the half-cell render size (gCellPts) so the
+'  playfield fills the Excel window.
 ' ============================================================
 
 Private mView As Range
 Private mBuf() As String
 
-' Size the viewport + cells to fill the current Excel window (capped at the
-' map). The map is square, so a landscape window keeps some side gutter;
-' resize the window and hit PLAY again to refit.
+' Pick a square half-cell size that fills the tighter window axis; the map is
+' square so a wide window keeps side gutter. Resize + hit PLAY to refit.
 Public Sub FitViewport()
     Dim ws As Worksheet
     Set ws = ThisWorkbook.Worksheets(SCREEN_SHEET)
@@ -28,32 +27,16 @@ Public Sub FitViewport()
     uw = ActiveWindow.UsableWidth
     uh = ActiveWindow.UsableHeight - HUD_PTS
     If uw < 200 Then uw = 200
-    If uh < 200 Then uh = 200
+    If uh < 120 Then uh = 120
 
-    ' Cell size that fills the tighter axis against the whole map;
-    ' the looser axis then scrolls.
-    gCellPts = uw / MAP_COLS
-    If uh / MAP_ROWS > gCellPts Then gCellPts = uh / MAP_ROWS
+    gCellPts = uw / VIEW_COLS
+    If uh / VIEW_ROWS < gCellPts Then gCellPts = uh / VIEW_ROWS
     If gCellPts < CELL_MIN_PTS Then gCellPts = CELL_MIN_PTS
     If gCellPts > CELL_MAX_PTS Then gCellPts = CELL_MAX_PTS
-
-    gViewCols = Int(uw / gCellPts)
-    gViewRows = Int(uh / gCellPts)
-    If gViewCols > MAP_COLS Then gViewCols = MAP_COLS
-    If gViewRows > MAP_ROWS Then gViewRows = MAP_ROWS
-    If gViewCols < VIEW_MIN_COLS Then gViewCols = VIEW_MIN_COLS
-    If gViewRows < VIEW_MIN_ROWS Then gViewRows = VIEW_MIN_ROWS
-End Sub
-
-' Test hook: pin the viewport to a known size at the default cell size.
-Public Sub DebugSetViewport(ByVal cols As Long, ByVal rows As Long)
-    gViewCols = cols
-    gViewRows = rows
-    gCellPts = CELL_DEFAULT_PTS
 End Sub
 
 Public Sub RenderInit()
-    If gViewCols <= 0 Or gViewRows <= 0 Then FitViewport
+    If gCellPts <= 0 Then FitViewport
     If gCellPts <= 0 Then gCellPts = CELL_DEFAULT_PTS
 
     Dim ws As Worksheet
@@ -69,16 +52,16 @@ Public Sub RenderInit()
     ws.Cells.HorizontalAlignment = xlCenter
     ws.Cells.VerticalAlignment = xlCenter
 
-    ws.Rows("1:" & (gViewRows + 6)).RowHeight = gCellPts
-    ws.Rows((gViewRows + 1) & ":" & (gViewRows + 6)).RowHeight = HUD_ROW_PTS
+    ws.Rows("1:" & (VIEW_ROWS + 6)).RowHeight = gCellPts
+    ws.Rows((VIEW_ROWS + 1) & ":" & (VIEW_ROWS + 6)).RowHeight = HUD_ROW_PTS
     SquareColumns ws
 
-    Set mView = ws.Range(ws.Cells(1, 1), ws.Cells(gViewRows, gViewCols))
+    Set mView = ws.Range(ws.Cells(1, 1), ws.Cells(VIEW_ROWS, VIEW_COLS))
     mView.Interior.Color = CLR_BG
     mView.Font.Color = CLR_FG
-    ReDim mBuf(1 To gViewRows, 1 To gViewCols)
+    ReDim mBuf(1 To VIEW_ROWS, 1 To VIEW_COLS)
 
-    With ws.Range(ws.Cells(gViewRows + 2, 1), ws.Cells(gViewRows + 4, 1))
+    With ws.Range(ws.Cells(VIEW_ROWS + 2, 1), ws.Cells(VIEW_ROWS + 4, 1))
         .Font.Bold = True
         .Font.Size = 11
     End With
@@ -86,7 +69,7 @@ Public Sub RenderInit()
 End Sub
 
 Private Function FontForCell(ByVal pts As Double) As Double
-    FontForCell = Int(pts * 0.62)
+    FontForCell = Int(pts * 1.1)          ' one glyph spans a 2-cell block
     If FontForCell < 8 Then FontForCell = 8
     If FontForCell > 28 Then FontForCell = 28
 End Function
@@ -100,33 +83,38 @@ Private Sub SquareColumns(ByVal ws As Worksheet)
         ws.Columns(1).ColumnWidth = mid
         If ws.Columns(1).Width > gCellPts Then hi = mid Else lo = mid
     Next i
-    ws.Range(ws.Columns(1), ws.Columns(gViewCols)).ColumnWidth = ws.Columns(1).ColumnWidth
+    ws.Range(ws.Columns(1), ws.Columns(VIEW_COLS)).ColumnWidth = ws.Columns(1).ColumnWidth
 End Sub
 
 Public Sub RenderFrame(ByVal fps As Double)
     Dim r As Long, c As Long
-    For r = 1 To gViewRows
-        For c = 1 To gViewCols
-            mBuf(r, c) = gMap(gCamR + r - 1, gCamC + c - 1)
+    For r = 1 To VIEW_ROWS
+        For c = 1 To VIEW_COLS
+            mBuf(r, c) = BlockAtHC(gCamR + r - 1, gCamC + c - 1)
         Next c
     Next r
 
-    Dim pr As Long, pc As Long
-    pr = gPlR - gCamR + 1
-    pc = gPlC - gCamC + 1
-    If pr >= 1 And pr <= gViewRows And pc >= 1 And pc <= gViewCols Then
-        mBuf(pr, pc) = T_PLAYER
-    End If
+    ' player: a 2x2 half-cell footprint
+    Dim dr As Long, dc As Long, vr As Long, vc As Long
+    For dr = 0 To 1
+        For dc = 0 To 1
+            vr = (gPlHR + dr) - gCamR + 1
+            vc = (gPlHC + dc) - gCamC + 1
+            If vr >= 1 And vr <= VIEW_ROWS And vc >= 1 And vc <= VIEW_COLS Then
+                mBuf(vr, vc) = T_PLAYER
+            End If
+        Next dc
+    Next dr
 
     mView.Value = mBuf
 
     Dim ws As Worksheet: Set ws = mView.Worksheet
-    ws.Cells(gViewRows + 2, 1).Value = _
+    ws.Cells(VIEW_ROWS + 2, 1).Value = _
         "HEALTH " & Format$(gHealth, "0000") & "     SCORE " & Format$(gScore, "000000")
-    ws.Cells(gViewRows + 3, 1).Value = _
+    ws.Cells(VIEW_ROWS + 3, 1).Value = _
         "KEYS " & gKeys & "     POTIONS " & gPotions
-    ws.Cells(gViewRows + 4, 1).Value = _
-        "fps " & Format$(fps, "0") & "   pos " & gPlR & "," & gPlC & _
-        "   cam " & gCamR & "," & gCamC & "   view " & gViewCols & "x" & gViewRows & _
+    ws.Cells(VIEW_ROWS + 4, 1).Value = _
+        "fps " & Format$(fps, "0") & "   blk " & ((gPlHR + 1) \ 2) & "," & ((gPlHC + 1) \ 2) & _
+        "   cam " & gCamR & "," & gCamC & _
         IIf(gState = "WON", "   *** LEVEL CLEARED - ESC ***", "   arrows move / ESC quit")
 End Sub
