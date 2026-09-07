@@ -10,6 +10,9 @@ gauntlex.xlsm
 /*.png
 /*.webp
 
+# Sliced sprite tiles - regenerate with reference/slice-tiles.ps1
+reference/genesis-tiles/
+
 # Editor / OS
 .DS_Store
 Thumbs.db
