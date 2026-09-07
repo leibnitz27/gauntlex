@@ -1,0 +1,10 @@
+# Built artifact - rebuild from src\ with build\Build-Workbook.ps1
+gauntlex.xlsm
+
+# Excel lock / temp files
+~$*.xls*
+*.tmp
+
+# Editor / OS
+.DS_Store
+Thumbs.db
