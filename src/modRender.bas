@@ -109,9 +109,13 @@ Public Sub RenderFrame(ByVal fps As Double)
     Next i
     For i = 1 To gEntN
         Select Case gEntKind(i)
-            Case K_GRUNT: Stamp gEntHR(i), gEntHC(i), "g"
-            Case K_GHOST: Stamp gEntHR(i), gEntHC(i), "o"
-            Case K_DEMON: Stamp gEntHR(i), gEntHC(i), "d"
+            Case K_GRUNT:  Stamp gEntHR(i), gEntHC(i), "g"
+            Case K_GHOST:  Stamp gEntHR(i), gEntHC(i), "o"
+            Case K_DEMON:  Stamp gEntHR(i), gEntHC(i), "d"
+            Case K_SORC:   If SorcVisible(i) Then Stamp gEntHR(i), gEntHC(i), "z"
+            Case K_LOBBER: Stamp gEntHR(i), gEntHC(i), "l"
+            Case K_THIEF:  Stamp gEntHR(i), gEntHC(i), "t"
+            Case K_DEATH:  Stamp gEntHR(i), gEntHC(i), "Y"
         End Select
     Next i
     Stamp gPlHR, gPlHC, T_PLAYER
