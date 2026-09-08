@@ -22,7 +22,7 @@ function Flood($g, $sr, $sc, $throughDoors) {
             if ($r -lt 0 -or $r -ge $H -or $c -lt 0 -or $c -ge $W) { continue }
             if ($seen[$r, $c]) { continue }
             $ch = $g[$r][$c]
-            if ($ch -eq '#' -or 'GOE'.Contains([string]$ch)) { continue }   # generators are solid
+            if ($ch -eq '#' -or 'GOEZL'.Contains([string]$ch)) { continue }   # generators are solid
             if ($ch -eq 'D' -and -not $throughDoors) { continue }
             $seen[$r, $c] = $true
             $q.Enqueue(@($r, $c))
@@ -44,7 +44,7 @@ Get-ChildItem (Join-Path $Root 'levels') -Filter '*.txt' | ForEach-Object {
     for ($r = 0; $r -lt $H; $r++) { for ($c = 0; $c -lt $W; $c++) {
         $ch = [string]$g[$r][$c]
         if ($ch -eq 'S') { $spawn = @($r, $c) }
-        if ('KDX+GOE'.Contains($ch)) { $cells[$ch] += , @($r, $c) }
+        if ('KDX+PGOEZL'.Contains($ch)) { $cells[$ch] += , @($r, $c) }
     } }
 
     Write-Host "== $name =="
@@ -62,9 +62,10 @@ Get-ChildItem (Join-Path $Root 'levels') -Filter '*.txt' | ForEach-Object {
             else     { Write-Host "  FAIL $label ($($p[0]),$($p[1])) unreachable"; $script:fail++ }
         }
     }
-    # keys / food must be reachable WITHOUT opening doors (no key yet)
-    Report 'K' 'key'   $reachNoDoor
-    Report '+' 'food'  $reachNoDoor
+    # keys / food / potions must be reachable WITHOUT opening doors (no key yet)
+    Report 'K' 'key'    $reachNoDoor
+    Report '+' 'food'   $reachNoDoor
+    Report 'P' 'potion' $reachNoDoor
     # exit must be reachable once doors can be opened
     Report 'X' 'exit'  $reachDoor
 
@@ -81,10 +82,12 @@ Get-ChildItem (Join-Path $Root 'levels') -Filter '*.txt' | ForEach-Object {
             else      { Write-Host "  FAIL $label ($($p[0]),$($p[1])) not approachable"; $script:fail++ }
         }
     }
-    Approachable 'D' 'door'      $reachNoDoor
-    Approachable 'G' 'grunt-gen' $reachDoor
-    Approachable 'O' 'ghost-gen' $reachDoor
-    Approachable 'E' 'demon-gen' $reachDoor
+    Approachable 'D' 'door'       $reachNoDoor
+    Approachable 'G' 'grunt-gen'  $reachDoor
+    Approachable 'O' 'ghost-gen'  $reachDoor
+    Approachable 'E' 'demon-gen'  $reachDoor
+    Approachable 'Z' 'sorc-gen'   $reachDoor
+    Approachable 'L' 'lobber-gen' $reachDoor
 }
 
 if ($fail) { throw "$fail level check(s) failed" }

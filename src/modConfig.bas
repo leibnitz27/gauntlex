@@ -49,6 +49,11 @@ Public Const SHOT_MS     As Long = 200            ' player fire cooldown
 Public Const PRJ_MS      As Long = 45            ' projectile step interval
 Public Const GEN_SPAWN_MS As Long = 2600          ' generator spawn interval (while on screen)
 Public Const DEMON_SHOOT_MS As Long = 1300
+Public Const SORC_FLICKER_MS As Long = 650        ' sorcerer visible<->invisible toggle
+Public Const LOBBER_THROW_MS As Long = 1500
+Public Const POTION_MS   As Long = 400            ' min gap between potion uses
+Public Const THIEF_DELAY_MS As Long = 6000        ' after level start, if the level has a T marker
+Public Const DEATH_DELAY_MS As Long = 12000       ' ... a Y marker
 
 ' ---- Tiles (block grid) ----
 Public Const T_FLOOR    As String = "."
@@ -58,19 +63,29 @@ Public Const T_EXIT     As String = "X"
 Public Const T_FOOD     As String = "+"          ' restores health
 Public Const T_KEY      As String = "K"
 Public Const T_DOOR     As String = "D"          ' solid until opened with a key
-Public Const T_GEN_GRUNT As String = "G"         ' generators (each spawns its monster while on screen)
-Public Const T_GEN_GHOST As String = "O"
-Public Const T_GEN_DEMON As String = "E"
-Public Const T_PLAYER   As String = "@"
+Public Const T_GEN_GRUNT  As String = "G"        ' generators (each spawns its monster while on screen)
+Public Const T_GEN_GHOST  As String = "O"
+Public Const T_GEN_DEMON  As String = "E"
+Public Const T_GEN_SORC   As String = "Z"
+Public Const T_GEN_LOBBER As String = "L"
+Public Const T_POTION     As String = "P"        ' pickup
+Public Const T_THIEF      As String = "T"        ' spawn markers (cleared to floor at load)
+Public Const T_DEATH      As String = "Y"
+Public Const T_PLAYER     As String = "@"
 
 ' ---- Entity kinds ----
-Public Const K_NONE  As Long = 0
-Public Const K_GRUNT As Long = 1
-Public Const K_GHOST As Long = 2
-Public Const K_DEMON As Long = 3
+Public Const K_NONE   As Long = 0
+Public Const K_GRUNT  As Long = 1
+Public Const K_GHOST  As Long = 2
+Public Const K_DEMON  As Long = 3
+Public Const K_SORC   As Long = 4
+Public Const K_LOBBER As Long = 5
+Public Const K_THIEF  As Long = 6
+Public Const K_DEATH  As Long = 7
 
 Public Const P_PLAYER As Long = 1                ' projectile owner
-Public Const P_ENEMY  As Long = 2
+Public Const P_ENEMY  As Long = 2               ' demon fireball - dies on wall
+Public Const P_LOBBER As Long = 3               ' rock - arcs over walls, limited life
 
 ' ---- Rules ----
 Public Const START_HEALTH    As Long = 2000
@@ -80,16 +95,26 @@ Public Const FOOD_VALUE      As Long = 350
 Public Const GRUNT_TOUCH_DMG As Long = 3          ' per entity tick while a monster overlaps you
 Public Const GHOST_DMG       As Long = 55         ' ghost kamikaze hit (then it dies)
 Public Const DEMON_SHOT_DMG  As Long = 70
+Public Const LOBBER_DMG      As Long = 50
+Public Const LOBBER_RANGE    As Long = 8          ' half-cells: closer than this, it backs off and throws
+Public Const LOBBER_ROCK_LIFE As Long = 30       ' rock steps before it lands
+Public Const DEMON_SHOT_LIFE As Long = 60
+Public Const DEATH_HP        As Long = 120        ' hits to kill Death the hard way
+Public Const DEATH_DRAIN     As Long = 7          ' per entity tick while Death overlaps you
 Public Const GEN_HP          As Long = 3
 Public Const GEN_KIND_CAP    As Long = 5          ' a generator idles if this many of its kind are already alive
-Public Const SCORE_GRUNT As Long = 10
-Public Const SCORE_GHOST As Long = 12
-Public Const SCORE_DEMON As Long = 40
-Public Const SCORE_GEN   As Long = 100
-Public Const SCORE_EXIT  As Long = 100
-Public Const MAX_ENT     As Long = 200
-Public Const MAX_GEN     As Long = 64
-Public Const MAX_PRJ     As Long = 80
+Public Const SCORE_GRUNT  As Long = 10
+Public Const SCORE_GHOST  As Long = 12
+Public Const SCORE_DEMON  As Long = 40
+Public Const SCORE_SORC   As Long = 20
+Public Const SCORE_LOBBER As Long = 25
+Public Const SCORE_THIEF  As Long = 200
+Public Const SCORE_DEATH  As Long = 500
+Public Const SCORE_GEN    As Long = 100
+Public Const SCORE_EXIT   As Long = 100
+Public Const MAX_ENT      As Long = 200
+Public Const MAX_GEN      As Long = 64
+Public Const MAX_PRJ      As Long = 96
 
 ' ---- Colours ----
 Public Const CLR_BG     As Long = 0

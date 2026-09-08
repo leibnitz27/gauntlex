@@ -2,13 +2,15 @@ Attribute VB_Name = "modGame"
 Option Explicit
 
 ' ============================================================
-'  Game state + per-frame update (M3a).
+'  Game state + per-frame update (M3b).
 '
-'  Entities (grunt / ghost / demon) live in parallel arrays;
-'  a K_NONE slot is free. Generators (from the level) spawn
-'  their kind on a timer while on screen and take hits to
-'  destroy. The player fires in its facing direction; demons
-'  fire back. Keys/doors/food/health-drain/death from M2.
+'  Entities in parallel arrays; K_NONE slot = free. gEntT is
+'  a per-kind scratch field: demon/lobber throw cooldown,
+'  thief carried-item code (0 none / 1 key / 2 potion). Death
+'  uses gEntHP (many hits). Sorcerer visibility is derived
+'  from mEntTick + slot, no state.
+'  Generators spawn their kind on screen; potions (C) clear
+'  the view; the thief steals; Death only a potion stops.
 ' ============================================================
 
 ' ---- player ----
@@ -27,10 +29,12 @@ Public gGenAlive() As Boolean, gGenHP() As Long, gGenT() As Long
 
 ' ---- projectiles ----
 Public gPrjN As Long
-Public gPrjKind() As Long, gPrjHR() As Long, gPrjHC() As Long, gPrjDR() As Long, gPrjDC() As Long
+Public gPrjKind() As Long, gPrjHR() As Long, gPrjHC() As Long
+Public gPrjDR() As Long, gPrjDC() As Long, gPrjLife() As Long
 
 Private mMoveAcc As Long, mDrainAcc As Long, mEntAcc As Long, mPrjAcc As Long, mShotAcc As Long
-Private mEntTick As Long
+Private mPotionAcc As Long, mEntTick As Long
+Private mThiefT As Long, mDeathT As Long           ' countdowns; -1 = no marker in level
 
 ' ============================================================
 
@@ -53,11 +57,13 @@ Public Sub GameInit()
     Next i
 
     ReDim gPrjKind(1 To MAX_PRJ): ReDim gPrjHR(1 To MAX_PRJ): ReDim gPrjHC(1 To MAX_PRJ)
-    ReDim gPrjDR(1 To MAX_PRJ): ReDim gPrjDC(1 To MAX_PRJ)
+    ReDim gPrjDR(1 To MAX_PRJ): ReDim gPrjDC(1 To MAX_PRJ): ReDim gPrjLife(1 To MAX_PRJ)
     gPrjN = 0
 
     mMoveAcc = 0: mDrainAcc = 0: mEntAcc = 0: mPrjAcc = 0: mShotAcc = SHOT_MS
-    mEntTick = 0
+    mPotionAcc = POTION_MS: mEntTick = 0
+    mThiefT = IIf(gThiefBR > 0, THIEF_DELAY_MS, -1)
+    mDeathT = IIf(gDeathBR > 0, DEATH_DELAY_MS, -1)
     CenterCamera
 End Sub
 
@@ -73,7 +79,15 @@ Public Sub GameUpdate(ByVal dt As Long)
     If mMoveAcc >= MOVE_MS Then mMoveAcc = 0: StepPlayer
 
     mShotAcc = mShotAcc + dt
-    If gInFire And mShotAcc >= SHOT_MS Then mShotAcc = 0: FireShot P_PLAYER, gPlHR + gFaceDR, gPlHC + gFaceDC, gFaceDR, gFaceDC
+    If gInFire And mShotAcc >= SHOT_MS Then
+        mShotAcc = 0
+        FireShot P_PLAYER, gPlHR + gFaceDR, gPlHC + gFaceDC, gFaceDR, gFaceDC, DEMON_SHOT_LIFE
+    End If
+
+    mPotionAcc = mPotionAcc + dt
+    If gInPotion And gPotions > 0 And mPotionAcc >= POTION_MS Then mPotionAcc = 0: UsePotion
+
+    ExpireTimers dt
 
     mEntAcc = mEntAcc + dt
     Do While mEntAcc >= ENT_TICK_MS
@@ -140,8 +154,9 @@ Private Sub PickupAt(ByVal hr As Long, ByVal hc As Long)
     For i = 1 To n
         If InMap(br(i), bc(i)) Then
             Select Case gBlock(br(i), bc(i))
-                Case T_FOOD: gHealth = gHealth + FOOD_VALUE: gBlock(br(i), bc(i)) = T_FLOOR
-                Case T_KEY:  gKeys = gKeys + 1:              gBlock(br(i), bc(i)) = T_FLOOR
+                Case T_FOOD:   gHealth = gHealth + FOOD_VALUE: gBlock(br(i), bc(i)) = T_FLOOR
+                Case T_KEY:    gKeys = gKeys + 1:              gBlock(br(i), bc(i)) = T_FLOOR
+                Case T_POTION: gPotions = gPotions + 1:        gBlock(br(i), bc(i)) = T_FLOOR
             End Select
         End If
     Next i
@@ -151,7 +166,7 @@ Private Sub MeleeEntAt(ByVal hr As Long, ByVal hc As Long)
     Dim i As Long
     For i = 1 To gEntN
         If gEntKind(i) <> K_NONE Then
-            If Overlap(hr, hc, gEntHR(i), gEntHC(i)) Then KillEntity i
+            If Overlap(hr, hc, gEntHR(i), gEntHC(i)) Then DamageEntity i
         End If
     Next i
 End Sub
@@ -167,35 +182,95 @@ End Sub
 ' ---- entities --------------------------------------------
 
 Private Sub StepEntities()
-    Dim i As Long, k As Long, moveNow As Boolean
+    Dim i As Long, k As Long
     For i = 1 To gEntN
         k = gEntKind(i)
-        If k = K_NONE Then GoTo NextE
-
-        moveNow = (k = K_GHOST) Or (mEntTick Mod 2 = 0)
-        If moveNow Then MoveToward i, gPlHR, gPlHC
-
-        If k = K_DEMON Then
-            gEntT(i) = gEntT(i) - ENT_TICK_MS
-            If gEntT(i) <= 0 Then
-                gEntT(i) = DEMON_SHOOT_MS
-                Dim ddr As Long, ddc As Long
-                ddr = Sgn(gPlHR - gEntHR(i)): ddc = Sgn(gPlHC - gEntHC(i))
-                If ddr <> 0 Or ddc <> 0 Then FireShot P_ENEMY, gEntHR(i) + ddr, gEntHC(i) + ddc, ddr, ddc
-            End If
-        End If
-
-        If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then
-            If k = K_GHOST Then
-                gHealth = gHealth - GHOST_DMG
-                gEntKind(i) = K_NONE               ' kamikaze
-            Else
-                gHealth = gHealth - GRUNT_TOUCH_DMG
-            End If
-        End If
-NextE:
+        Select Case k
+            Case K_NONE
+            Case K_GRUNT:  StepChaser i, K_GRUNT, GRUNT_TOUCH_DMG
+            Case K_GHOST:  StepGhost i
+            Case K_DEMON:  StepDemon i
+            Case K_SORC:   StepChaser i, K_SORC, GRUNT_TOUCH_DMG
+            Case K_LOBBER: StepLobber i
+            Case K_THIEF:  StepThief i
+            Case K_DEATH:  StepDeath i
+        End Select
     Next i
 End Sub
+
+Private Sub StepChaser(ByVal i As Long, ByVal k As Long, ByVal dmg As Long)
+    If mEntTick Mod 2 = 0 Then MoveToward i, gPlHR, gPlHC
+    If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then gHealth = gHealth - dmg
+End Sub
+
+Private Sub StepGhost(ByVal i As Long)
+    MoveToward i, gPlHR, gPlHC                        ' every tick - fast
+    If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then
+        gHealth = gHealth - GHOST_DMG
+        gEntKind(i) = K_NONE                          ' kamikaze
+    End If
+End Sub
+
+Private Sub StepDemon(ByVal i As Long)
+    If mEntTick Mod 2 = 0 Then MoveToward i, gPlHR, gPlHC
+    gEntT(i) = gEntT(i) - ENT_TICK_MS
+    If gEntT(i) <= 0 Then
+        gEntT(i) = DEMON_SHOOT_MS
+        Dim dr As Long, dc As Long
+        dr = Sgn(gPlHR - gEntHR(i)): dc = Sgn(gPlHC - gEntHC(i))
+        If dr <> 0 Or dc <> 0 Then FireShot P_ENEMY, gEntHR(i) + dr, gEntHC(i) + dc, dr, dc, DEMON_SHOT_LIFE
+    End If
+    If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then gHealth = gHealth - GRUNT_TOUCH_DMG
+End Sub
+
+Private Sub StepLobber(ByVal i As Long)
+    Dim d As Long: d = Abs(gPlHR - gEntHR(i)) + Abs(gPlHC - gEntHC(i))
+    If mEntTick Mod 2 = 0 Then
+        If d > LOBBER_RANGE Then
+            MoveToward i, gPlHR, gPlHC
+        Else
+            MoveToward i, gEntHR(i) - Sgn(gPlHR - gEntHR(i)), gEntHC(i) - Sgn(gPlHC - gEntHC(i))  ' back away
+        End If
+    End If
+    gEntT(i) = gEntT(i) - ENT_TICK_MS
+    If gEntT(i) <= 0 Then
+        gEntT(i) = LOBBER_THROW_MS
+        Dim dr As Long, dc As Long
+        dr = Sgn(gPlHR - gEntHR(i)): dc = Sgn(gPlHC - gEntHC(i))
+        If dr <> 0 Or dc <> 0 Then
+            Dim s As Long: s = FireShot(P_LOBBER, gEntHR(i) + dr, gEntHC(i) + dc, dr, dc, LOBBER_ROCK_LIFE)
+        End If
+    End If
+    If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then gHealth = gHealth - GRUNT_TOUCH_DMG
+End Sub
+
+Private Sub StepThief(ByVal i As Long)
+    ' fast; chases until it has stolen, then flees
+    Dim carrying As Boolean: carrying = (gEntT(i) <> 0)
+    If carrying Then
+        MoveToward i, gEntHR(i) - Sgn(gPlHR - gEntHR(i)) * 3, gEntHC(i) - Sgn(gPlHC - gEntHC(i)) * 3
+        MoveToward i, gEntHR(i) - Sgn(gPlHR - gEntHR(i)) * 3, gEntHC(i) - Sgn(gPlHC - gEntHC(i)) * 3
+    Else
+        MoveToward i, gPlHR, gPlHC
+        If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then
+            If gKeys > 0 Then
+                gKeys = gKeys - 1: gEntT(i) = 1
+            ElseIf gPotions > 0 Then
+                gPotions = gPotions - 1: gEntT(i) = 2
+            End If
+        End If
+    End If
+End Sub
+
+Private Sub StepDeath(ByVal i As Long)
+    If mEntTick Mod 3 = 0 Then MoveToward i, gPlHR, gPlHC     ' slow
+    If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then gHealth = gHealth - DEATH_DRAIN
+End Sub
+
+' sorcerer flicker - render mirrors this
+Public Function SorcVisible(ByVal i As Long) As Boolean
+    SorcVisible = (((mEntTick \ 10) + i) Mod 2 = 0)
+End Function
 
 Private Sub MoveToward(ByVal i As Long, ByVal tr As Long, ByVal tc As Long)
     Dim dr As Long, dc As Long
@@ -210,11 +285,28 @@ Private Sub MoveToward(ByVal i As Long, ByVal tr As Long, ByVal tc As Long)
     End If
 End Sub
 
+' one melee/shot hit - Death soaks many, everything else dies at once
+Private Sub DamageEntity(ByVal i As Long)
+    If gEntKind(i) = K_DEATH Then
+        gEntHP(i) = gEntHP(i) - 1
+        If gEntHP(i) <= 0 Then KillEntity i
+    Else
+        KillEntity i
+    End If
+End Sub
+
 Private Sub KillEntity(ByVal i As Long)
     Select Case gEntKind(i)
-        Case K_GRUNT: gScore = gScore + SCORE_GRUNT
-        Case K_GHOST: gScore = gScore + SCORE_GHOST
-        Case K_DEMON: gScore = gScore + SCORE_DEMON
+        Case K_GRUNT:  gScore = gScore + SCORE_GRUNT
+        Case K_GHOST:  gScore = gScore + SCORE_GHOST
+        Case K_DEMON:  gScore = gScore + SCORE_DEMON
+        Case K_SORC:   gScore = gScore + SCORE_SORC
+        Case K_LOBBER: gScore = gScore + SCORE_LOBBER
+        Case K_DEATH:  gScore = gScore + SCORE_DEATH
+        Case K_THIEF
+            gScore = gScore + SCORE_THIEF
+            If gEntT(i) = 1 Then gKeys = gKeys + 1        ' drop what it stole
+            If gEntT(i) = 2 Then gPotions = gPotions + 1
     End Select
     gEntKind(i) = K_NONE
 End Sub
@@ -237,8 +329,13 @@ End Function
 Private Sub SpawnEntity(ByVal k As Long, ByVal hr As Long, ByVal hc As Long)
     Dim s As Long: s = FreeEntSlot()
     If s = 0 Then Exit Sub
-    gEntKind(s) = k: gEntHR(s) = hr: gEntHC(s) = hc: gEntHP(s) = 1
-    gEntT(s) = IIf(k = K_DEMON, DEMON_SHOOT_MS, 0)
+    gEntKind(s) = k: gEntHR(s) = hr: gEntHC(s) = hc
+    gEntHP(s) = IIf(k = K_DEATH, DEATH_HP, 1)
+    Select Case k
+        Case K_DEMON:  gEntT(s) = DEMON_SHOOT_MS
+        Case K_LOBBER: gEntT(s) = LOBBER_THROW_MS
+        Case Else:     gEntT(s) = 0
+    End Select
 End Sub
 
 ' ---- generators -----------------------------------------
@@ -293,17 +390,20 @@ End Sub
 
 ' ---- projectiles ---------------------------------------
 
-Private Sub FireShot(ByVal owner As Long, ByVal hr As Long, ByVal hc As Long, ByVal dr As Long, ByVal dc As Long)
+Private Function FireShot(ByVal owner As Long, ByVal hr As Long, ByVal hc As Long, _
+                          ByVal dr As Long, ByVal dc As Long, ByVal life As Long) As Long
     Dim s As Long, i As Long
     For i = 1 To gPrjN
         If gPrjKind(i) = 0 Then s = i: Exit For
     Next i
     If s = 0 Then
-        If gPrjN >= MAX_PRJ Then Exit Sub
+        If gPrjN >= MAX_PRJ Then Exit Function
         gPrjN = gPrjN + 1: s = gPrjN
     End If
-    gPrjKind(s) = owner: gPrjHR(s) = hr: gPrjHC(s) = hc: gPrjDR(s) = dr: gPrjDC(s) = dc
-End Sub
+    gPrjKind(s) = owner: gPrjHR(s) = hr: gPrjHC(s) = hc
+    gPrjDR(s) = dr: gPrjDC(s) = dc: gPrjLife(s) = life
+    FireShot = s
+End Function
 
 Private Sub StepProjectiles()
     Dim i As Long, j As Long
@@ -311,11 +411,13 @@ Private Sub StepProjectiles()
         If gPrjKind(i) = 0 Then GoTo NextP
         gPrjHR(i) = gPrjHR(i) + gPrjDR(i)
         gPrjHC(i) = gPrjHC(i) + gPrjDC(i)
+        gPrjLife(i) = gPrjLife(i) - 1
+        If gPrjLife(i) <= 0 Then gPrjKind(i) = 0: GoTo NextP
 
         If gPrjHR(i) < 1 Or gPrjHR(i) > MAP_ROWS Or gPrjHC(i) < 1 Or gPrjHC(i) > MAP_COLS Then
             gPrjKind(i) = 0: GoTo NextP
         End If
-        If IsWallHC(gPrjHR(i), gPrjHC(i)) Then
+        If gPrjKind(i) <> P_LOBBER And IsWallHC(gPrjHR(i), gPrjHC(i)) Then
             If IsGen(BlockAtHC(gPrjHR(i), gPrjHC(i))) Then
                 HitGen (gPrjHR(i) + 1) \ 2, (gPrjHC(i) + 1) \ 2
             End If
@@ -326,13 +428,14 @@ Private Sub StepProjectiles()
             For j = 1 To gEntN
                 If gEntKind(j) <> K_NONE Then
                     If PointIn(gPrjHR(i), gPrjHC(i), gEntHR(j), gEntHC(j)) Then
-                        KillEntity j: gPrjKind(i) = 0: GoTo NextP
+                        DamageEntity j: gPrjKind(i) = 0: GoTo NextP
                     End If
                 End If
             Next j
         Else
             If PointIn(gPrjHR(i), gPrjHC(i), gPlHR, gPlHC) Then
-                gHealth = gHealth - DEMON_SHOT_DMG: gPrjKind(i) = 0: GoTo NextP
+                gHealth = gHealth - IIf(gPrjKind(i) = P_LOBBER, LOBBER_DMG, DEMON_SHOT_DMG)
+                gPrjKind(i) = 0: GoTo NextP
             End If
         End If
 NextP:
@@ -351,6 +454,45 @@ Private Sub PlayerDied()
         mDrainAcc = 0
         CenterCamera
     End If
+End Sub
+
+' the thief and Death arrive a while into the level (if the level places them)
+Private Sub ExpireTimers(ByVal dt As Long)
+    If mThiefT >= 0 Then
+        mThiefT = mThiefT - dt
+        If mThiefT <= 0 Then
+            mThiefT = -1
+            SpawnEntity K_THIEF, gThiefBR * 2 - 1, gThiefBC * 2 - 1
+        End If
+    End If
+    If mDeathT >= 0 Then
+        mDeathT = mDeathT - dt
+        If mDeathT <= 0 Then
+            mDeathT = -1
+            SpawnEntity K_DEATH, gDeathBR * 2 - 1, gDeathBC * 2 - 1
+        End If
+    End If
+End Sub
+
+' screen-clear blast: everything visible dies (Death included)
+Private Sub UsePotion()
+    gPotions = gPotions - 1
+    Dim i As Long
+    For i = 1 To gEntN
+        If gEntKind(i) <> K_NONE And NearCamera(gEntHR(i), gEntHC(i), 2) Then KillEntity i
+    Next i
+    For i = 1 To gGenN
+        If gGenAlive(i) And NearCamera(gGenBR(i) * 2 - 1, gGenBC(i) * 2 - 1, 2) Then
+            gGenAlive(i) = False
+            gBlock(gGenBR(i), gGenBC(i)) = T_FLOOR
+            gScore = gScore + SCORE_GEN
+        End If
+    Next i
+    For i = 1 To gPrjN
+        If gPrjKind(i) <> 0 And gPrjKind(i) <> P_PLAYER Then
+            If NearCamera(gPrjHR(i), gPrjHC(i), 2) Then gPrjKind(i) = 0
+        End If
+    Next i
 End Sub
 
 Private Function InMap(ByVal br As Long, ByVal bc As Long) As Boolean
@@ -408,16 +550,33 @@ Public Sub DebugWarp(ByVal hr As Long, ByVal hc As Long)
 End Sub
 Public Sub DebugSpawn(ByVal k As Long, ByVal hr As Long, ByVal hc As Long): SpawnEntity k, hr, hc: End Sub
 Public Sub DebugFace(ByVal dr As Long, ByVal dc As Long): gFaceDR = dr: gFaceDC = dc: End Sub
-Public Sub DebugFire(): FireShot P_PLAYER, gPlHR + gFaceDR, gPlHC + gFaceDC, gFaceDR, gFaceDC: End Sub
+Public Sub DebugFire()
+    FireShot P_PLAYER, gPlHR + gFaceDR, gPlHC + gFaceDC, gFaceDR, gFaceDC, DEMON_SHOT_LIFE
+End Sub
+Public Sub DebugSetKeys(ByVal k As Long): gKeys = k: End Sub
+Public Sub DebugSetPotions(ByVal p As Long): gPotions = p: End Sub
+Public Sub DebugKillGens()                       ' test isolation - stop all generators
+    Dim i As Long
+    For i = 1 To gGenN: gGenAlive(i) = False: Next i
+End Sub
+Public Sub DebugUsePotion(): If gPotions > 0 Then UsePotion
+End Sub
+Public Function DebugSorcVisible() As Boolean
+    Dim i As Long
+    For i = 1 To gEntN
+        If gEntKind(i) = K_SORC Then DebugSorcVisible = SorcVisible(i): Exit Function
+    Next i
+End Function
 
 Public Function DebugState() As String
-    Dim i As Long, ea As Long, ga As Long, pa As Long, e1r As Long, e1c As Long, best As Long
-    e1r = -1: e1c = -1: best = 1000000
+    Dim i As Long, ea As Long, ga As Long, pa As Long
+    Dim e1r As Long, e1c As Long, e1k As Long, best As Long
+    e1r = -1: e1c = -1: e1k = 0: best = 1000000
     For i = 1 To gEntN
         If gEntKind(i) <> K_NONE Then
             ea = ea + 1
             Dim d As Long: d = Abs(gEntHR(i) - gPlHR) + Abs(gEntHC(i) - gPlHC)
-            If d < best Then best = d: e1r = gEntHR(i): e1c = gEntHC(i)
+            If d < best Then best = d: e1r = gEntHR(i): e1c = gEntHC(i): e1k = gEntKind(i)
         End If
     Next i
     For i = 1 To gGenN
@@ -429,5 +588,6 @@ Public Function DebugState() As String
     DebugState = VIEW_COLS & ";" & VIEW_ROWS & ";" & gCamR & ";" & gCamC & _
                  ";" & gPlHR & ";" & gPlHC & ";" & gState & ";" & Format$(gCellPts, "0.0") & _
                  ";" & gLives & ";" & gHealth & ";" & gKeys & ";" & gScore & _
-                 ";" & ea & ";" & e1r & ";" & e1c & ";" & ga & ";" & pa
+                 ";" & ea & ";" & e1r & ";" & e1c & ";" & ga & ";" & pa & _
+                 ";" & gPotions & ";" & e1k
 End Function

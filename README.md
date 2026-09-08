@@ -177,9 +177,17 @@ Generators spawn an actor into a free adjacent cell on a per-generator timer.
       walls/entities/generators; **demons fire back**. Ghost is a kamikaze
       (big hit, then gone). `build\Check-Level.ps1` checks generators are
       approachable. Verified by `build\Smoke-Test.ps1` (25 checks).
-- [ ] **M3b — specials & potions.** Sorcerer (flicker-invisible), lobber
-      (arcing rocks over walls), potions (`P` pickup + `C` screen-clear blast),
-      the thief, Death.
+- [x] **M3b — specials & potions.** Sorcerer (`Z` gen; flickers invisible on a
+      derived phase, still solid/dangerous), lobber (`L` gen; backs off inside
+      `LOBBER_RANGE` and throws `P_LOBBER` rocks that ignore walls, limited
+      life). Potions: `P` pickup, `C` uses one - screen-clear blast kills every
+      entity + generator + enemy shot in view (Death included). Thief (`T`
+      marker, arrives after `THIEF_DELAY_MS`): steals a key/potion on contact
+      then flees fast; kill it to get the item back (+200). Death (`Y` marker,
+      after `DEATH_DELAY_MS`): slow, `DEATH_DRAIN`/tick on contact,
+      `DEATH_HP` hits to kill the hard way, or one potion. `DamageEntity`
+      routes melee/shots (Death soaks, everything else dies at once). Verified
+      by `build\Smoke-Test.ps1` (28 checks).
 
 - [ ] **M4 — game shape.** Four characters + select screen, level chaining +
       loader, title screen, sound.

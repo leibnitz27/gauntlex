@@ -17,7 +17,10 @@ Public gExitBR   As Long, gExitBC As Long         ' exit, block coords
 
 Public gGenN     As Long                          ' generators found in the level
 Public gGenBR()  As Long, gGenBC() As Long        ' ... block coords
-Public gGenKind() As Long                         ' ... K_GRUNT / K_GHOST / K_DEMON
+Public gGenKind() As Long                         ' ... K_GRUNT / K_GHOST / K_DEMON / K_SORC / K_LOBBER
+
+Public gThiefBR As Long, gThiefBC As Long         ' spawn markers (0 = absent)
+Public gDeathBR As Long, gDeathBC As Long
 
 Public Sub LoadLevel(ByVal sheetName As String)
     Dim ws As Worksheet
@@ -31,27 +34,34 @@ Public Sub LoadLevel(ByVal sheetName As String)
     gStartHR = 3: gStartHC = 3
     gExitBR = 0:  gExitBC = 0
     gGenN = 0
+    gThiefBR = 0: gThiefBC = 0: gDeathBR = 0: gDeathBC = 0
 
     Dim r As Long, c As Long, ch As String
     For r = 1 To MAP_BLOCK_ROWS
         For c = 1 To MAP_BLOCK_COLS
             ch = Left$(CStr(raw(r, c)) & " ", 1)
             Select Case ch
-                Case T_WALL, T_FOOD, T_KEY, T_DOOR, T_EXIT
+                Case T_WALL, T_FOOD, T_KEY, T_DOOR, T_EXIT, T_POTION
                     gBlock(r, c) = ch
                     If ch = T_EXIT Then gExitBR = r: gExitBC = c
                 Case T_SPAWN
                     gStartHR = r * 2 - 1: gStartHC = c * 2 - 1
                     gBlock(r, c) = T_FLOOR
-                Case T_GEN_GRUNT, T_GEN_GHOST, T_GEN_DEMON
+                Case T_THIEF
+                    gThiefBR = r: gThiefBC = c: gBlock(r, c) = T_FLOOR
+                Case T_DEATH
+                    gDeathBR = r: gDeathBC = c: gBlock(r, c) = T_FLOOR
+                Case T_GEN_GRUNT, T_GEN_GHOST, T_GEN_DEMON, T_GEN_SORC, T_GEN_LOBBER
                     gBlock(r, c) = ch
                     If gGenN < MAX_GEN Then
                         gGenN = gGenN + 1
                         gGenBR(gGenN) = r: gGenBC(gGenN) = c
                         Select Case ch
-                            Case T_GEN_GRUNT: gGenKind(gGenN) = K_GRUNT
-                            Case T_GEN_GHOST: gGenKind(gGenN) = K_GHOST
-                            Case T_GEN_DEMON: gGenKind(gGenN) = K_DEMON
+                            Case T_GEN_GRUNT:  gGenKind(gGenN) = K_GRUNT
+                            Case T_GEN_GHOST:  gGenKind(gGenN) = K_GHOST
+                            Case T_GEN_DEMON:  gGenKind(gGenN) = K_DEMON
+                            Case T_GEN_SORC:   gGenKind(gGenN) = K_SORC
+                            Case T_GEN_LOBBER: gGenKind(gGenN) = K_LOBBER
                         End Select
                     End If
                 Case Else
@@ -62,7 +72,8 @@ Public Sub LoadLevel(ByVal sheetName As String)
 End Sub
 
 Public Function IsGen(ByVal ch As String) As Boolean
-    IsGen = (ch = T_GEN_GRUNT Or ch = T_GEN_GHOST Or ch = T_GEN_DEMON)
+    IsGen = (ch = T_GEN_GRUNT Or ch = T_GEN_GHOST Or ch = T_GEN_DEMON _
+          Or ch = T_GEN_SORC Or ch = T_GEN_LOBBER)
 End Function
 
 ' Block char at a half-cell (for rendering). Off-map reads as wall.
