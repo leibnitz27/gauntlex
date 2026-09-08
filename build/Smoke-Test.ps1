@@ -42,7 +42,7 @@ try {
             camR=[int]$p[2]; camC=[int]$p[3]; plHR=[int]$p[4]; plHC=[int]$p[5]; st=$p[6]; cell=[double]$p[7]
             lives=[int]$p[8]; health=[int]$p[9]; keys=[int]$p[10]; score=[int]$p[11]
             entN=[int]$p[12]; e1r=[int]$p[13]; e1c=[int]$p[14]; genAlive=[int]$p[15]; prjN=[int]$p[16]
-            pot=[int]$p[17]; e1k=[int]$p[18]; char=[int]$p[19]
+            pot=[int]$p[17]; e1k=[int]$p[18]; char=[int]$p[19]; lvl=[int]$p[20]
         }
     }
     function Dist($s) { [math]::Abs($s.e1r - $s.plHR) + [math]::Abs($s.e1c - $s.plHC) }
@@ -166,6 +166,29 @@ try {
     Check "wizard potion reaches further" ($wizKill -and $valkMiss) "wizKill=$wizKill valkMiss=$valkMiss"
 
     $excel.Run('DebugSetChar', [int]$CH_WARRIOR)      # restore default for the rest
+
+    # ---- M4b: level chaining, victory ----
+    $excel.Run('GameInit')
+    Check "starts on level 1"        ((State).lvl -eq 1) (State).lvl
+
+    $excel.Run('GameInit')
+    $excel.Run('DebugWarp', [int]57, [int]5); $excel.Run('DebugSpawn', [int]$K_GRUNT, [int]57, [int]7)
+    $excel.Run('DebugStep', [int]0, [int]1)                    # +10 score
+    $excel.Run('DebugSetKeys', [int]2)
+    $b = State
+    $excel.Run('DebugNextLevel')
+    $a = State
+    Check "next level: advance + carry" ($a.lvl -eq 2 -and $a.st -eq 'PLAY' -and $a.score -ge $SCORE_GRUNT -and $a.keys -eq 0) "lvl $($a.lvl) $($a.st) score $($a.score) keys $($a.keys)"
+
+    $excel.Run('GameInit'); $excel.Run('DebugSetHealth', [int]500); $excel.Run('DebugNextLevel')
+    Check "level bonus tops up health" ((State).health -eq 750) (State).health
+
+    $excel.Run('GameInit')
+    $excel.Run('DebugNextLevel'); $excel.Run('DebugNextLevel'); $excel.Run('DebugNextLevel')
+    $s = State
+    Check "no level after last -> VICTORY" ($s.st -eq 'VICTORY' -and $s.lvl -eq 3) "$($s.st) lvl $($s.lvl)"
+    $excel.Run('RenderVictory')
+    Check "victory screen renders"    (((View-Row 5) + (View-Row 7)) -match 'ESCAPED|DUNGEON') "$((View-Row 5).Trim())"
 
     # ---- M2 carry-over ----
     $excel.Run('GameInit'); $excel.Run('DebugWarp', [int]9, [int]43); $excel.Run('DebugStep', [int]0, [int]2)

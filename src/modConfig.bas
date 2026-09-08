@@ -37,7 +37,12 @@ Public Const HUD_GAP_COLS     As Long = 1         ' blank columns between playfi
 Public gCellPts As Double                         ' current half-cell render size, points
 
 Public Const SCREEN_SHEET As String = "Screen"
-Public Const LEVEL_SHEET  As String = "L01"
+
+' ---- Progression ----
+Public Const LEVEL_CLEAR_BONUS As Long = 250      ' health topped up on entering the next level
+Public Const WARN_FOOD_AT      As Long = 700      ' "needs food badly"
+Public Const WARN_DIE_AT       As Long = 300      ' "is about to die"
+Public Const WARN_REARM_AT     As Long = 950      ' health above this re-arms the warnings
 
 ' ---- Timing ----
 Public Const TARGET_FPS  As Long = 25

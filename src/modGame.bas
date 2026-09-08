@@ -33,18 +33,42 @@ Public gPrjN As Long
 Public gPrjKind() As Long, gPrjHR() As Long, gPrjHC() As Long
 Public gPrjDR() As Long, gPrjDC() As Long, gPrjLife() As Long
 
+Public gLevelNum As Long
+
 Private mMoveAcc As Long, mDrainAcc As Long, mEntAcc As Long, mPrjAcc As Long, mShotAcc As Long
 Private mPotionAcc As Long, mEntTick As Long
 Private mThiefT As Long, mDeathT As Long           ' countdowns; -1 = no marker in level
+Private mWarnFood As Boolean, mWarnDie As Boolean
 
 ' ============================================================
 
+' full reset - new run from level 1 (also the smoke-test entry point)
 Public Sub GameInit()
-    LoadLevel LEVEL_SHEET
+    gScore = 0: gLives = START_LIVES: gPotions = 0
+    gHealth = START_HEALTH
+    gLevelNum = 1
+    LoadCurrentLevel
+End Sub
+
+Private Function LevelName(ByVal n As Long) As String
+    LevelName = "L" & Format$(n, "00")
+End Function
+
+Private Function LevelSheetExists(ByVal n As Long) As Boolean
+    Dim s As Worksheet, nm As String
+    nm = LevelName(n)
+    For Each s In ThisWorkbook.Worksheets
+        If s.Name = nm Then LevelSheetExists = True: Exit Function
+    Next s
+End Function
+
+' load gLevelNum; keep score / lives / potions / health / char
+Private Sub LoadCurrentLevel()
+    LoadLevel LevelName(gLevelNum)
     gPlHR = gStartHR: gPlHC = gStartHC
     gFaceDR = 1: gFaceDC = 0
     gState = "PLAY"
-    gHealth = START_HEALTH: gScore = 0: gKeys = 0: gPotions = 0: gLives = START_LIVES
+    gKeys = 0
 
     ReDim gEntKind(1 To MAX_ENT): ReDim gEntHR(1 To MAX_ENT): ReDim gEntHC(1 To MAX_ENT)
     ReDim gEntHP(1 To MAX_ENT): ReDim gEntT(1 To MAX_ENT)
@@ -54,7 +78,7 @@ Public Sub GameInit()
     Dim i As Long
     For i = 1 To gGenN
         gGenAlive(i) = True: gGenHP(i) = GEN_HP
-        gGenT(i) = 600 + (i * 370) Mod 2000        ' stagger first spawns
+        gGenT(i) = 600 + (i * 370) Mod 2000
     Next i
 
     ReDim gPrjKind(1 To MAX_PRJ): ReDim gPrjHR(1 To MAX_PRJ): ReDim gPrjHC(1 To MAX_PRJ)
@@ -63,10 +87,22 @@ Public Sub GameInit()
 
     mMoveAcc = 0: mDrainAcc = 0: mEntAcc = 0: mPrjAcc = 0: mShotAcc = SHOT_MS
     mPotionAcc = POTION_MS: mEntTick = 0
+    mWarnFood = False: mWarnDie = False
     mThiefT = IIf(gThiefBR > 0, THIEF_DELAY_MS, -1)
     mDeathT = IIf(gDeathBR > 0, DEATH_DELAY_MS, -1)
     CenterCamera
+    Say "Enter level " & gLevelNum
 End Sub
+
+' called by the engine after the level-clear pause; False -> no more levels
+Public Function AdvanceLevel() As Boolean
+    If Not LevelSheetExists(gLevelNum + 1) Then Exit Function
+    gLevelNum = gLevelNum + 1
+    gHealth = gHealth + LEVEL_CLEAR_BONUS
+    If gHealth > START_HEALTH Then gHealth = START_HEALTH
+    LoadCurrentLevel
+    AdvanceLevel = True
+End Function
 
 Public Sub GameUpdate(ByVal dt As Long)
     If gState <> "PLAY" Then Exit Sub
@@ -102,9 +138,21 @@ Public Sub GameUpdate(ByVal dt As Long)
         mPrjAcc = mPrjAcc - PRJ_MS: StepProjectiles
     Loop
 
+    HealthWarnings
+
     If gHealth <= 0 Then PlayerDied
     If gState = "PLAY" And gExitBR <> 0 And PlayerCovers(gExitBR, gExitBC) Then
         gScore = gScore + SCORE_EXIT: gState = "WON"
+        Say "Level complete"
+    End If
+End Sub
+
+Private Sub HealthWarnings()
+    If gHealth > WARN_REARM_AT Then mWarnFood = False: mWarnDie = False
+    If gHealth <= WARN_DIE_AT And Not mWarnDie Then
+        mWarnDie = True: Say CharName(gChar) & " is about to die"
+    ElseIf gHealth <= WARN_FOOD_AT And Not mWarnFood Then
+        mWarnFood = True: Say CharName(gChar) & " needs food badly"
     End If
 End Sub
 
@@ -453,11 +501,14 @@ Private Sub PlayerDied()
     gLives = gLives - 1
     If gLives <= 0 Then
         gLives = 0: gState = "OVER"
+        Say "Game over"
     Else
         gHealth = START_HEALTH
         gPlHR = gStartHR: gPlHC = gStartHC
         mDrainAcc = 0
+        mWarnFood = False: mWarnDie = False
         CenterCamera
+        Say CharName(gChar) & " has died"
     End If
 End Sub
 
@@ -561,6 +612,9 @@ End Sub
 Public Sub DebugSetKeys(ByVal k As Long): gKeys = k: End Sub
 Public Sub DebugSetPotions(ByVal p As Long): gPotions = p: End Sub
 Public Sub DebugSetChar(ByVal c As Long): gChar = c: End Sub
+Public Sub DebugNextLevel()              ' mirrors the engine's post-WON step
+    If AdvanceLevel() Then gState = "PLAY" Else gState = "VICTORY"
+End Sub
 Public Sub DebugKillGens()                       ' test isolation - stop all generators
     Dim i As Long
     For i = 1 To gGenN: gGenAlive(i) = False: Next i
@@ -595,5 +649,5 @@ Public Function DebugState() As String
                  ";" & gPlHR & ";" & gPlHC & ";" & gState & ";" & Format$(gCellPts, "0.0") & _
                  ";" & gLives & ";" & gHealth & ";" & gKeys & ";" & gScore & _
                  ";" & ea & ";" & e1r & ";" & e1c & ";" & ga & ";" & pa & _
-                 ";" & gPotions & ";" & e1k & ";" & gChar
+                 ";" & gPotions & ";" & e1k & ";" & gChar & ";" & gLevelNum
 End Function

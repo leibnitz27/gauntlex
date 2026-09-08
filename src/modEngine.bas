@@ -26,6 +26,7 @@ Public Sub StartGauntlex()
     Application.Interactive = False     ' Excel ignores keyboard/mouse; we poll GetAsyncKeyState directly
     On Error GoTo Cleanup
     SetPlayButton False
+    SoundInit
 
     FitViewport         ' size the view to the Excel window (capped at the map)
     RenderInit
@@ -75,9 +76,22 @@ Public Sub StartGauntlex()
                 GameUpdate dt
                 RenderFrame fps
 
-            Case "WON", "OVER"
+            Case "WON"                          ' level cleared -> next, or victory
                 RenderFrame fps
-                If resultAt = 0 Then resultAt = tNow + 2200
+                If resultAt = 0 Then resultAt = tNow + 2000
+                If tNow >= resultAt Then
+                    resultAt = 0
+                    If AdvanceLevel() Then gState = "PLAY" Else gState = "VICTORY"
+                End If
+
+            Case "VICTORY"
+                RenderVictory
+                If resultAt = 0 Then resultAt = tNow + 4500: Say "You have escaped the dungeon"
+                If tNow >= resultAt Then gState = "TITLE": resultAt = 0
+
+            Case "OVER"
+                RenderFrame fps
+                If resultAt = 0 Then resultAt = tNow + 2400
                 If tNow >= resultAt Then gState = "TITLE": resultAt = 0
         End Select
 
