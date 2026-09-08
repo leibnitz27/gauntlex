@@ -157,9 +157,16 @@ Generators spawn an actor into a free adjacent cell on a per-generator timer.
   - *History: the first M1 pass used a single 16px grid with whole-cell moves;
     reworked to the half-cell model to match the C64's sub-block movement.*
 
-- [ ] **M2 — first real level.** Keys and doors, food (restores health),
-      health draining over time, grunts (the 8-direction pursuit AI on a fixed
-      tick), melee, death + respawn / game-over.
+- [x] **M2 — first real level.** `levels/L01.txt` redrawn with keys, a locked
+      door guarding the exit, food, and 7 grunt spawns. `modLevel` parses the
+      new tiles (`+ K D G`), tracks grunt spawn points, treats closed doors as
+      solid. `modGame`: health drains every `DRAIN_MS`; grunts step toward the
+      player every `GRUNT_MS` (8-dir greedy + wall-slide) and drain health on
+      contact; walking into a grunt melee-kills it; keys open doors; food heals;
+      0 health = lose a life + respawn, 0 lives = `OVER`. `modRender` stamps
+      grunts (`g`) under the player; HUD gains `LIVES`. Verified by
+      `build\Smoke-Test.ps1` (20 checks). *Deferred: generators (M3), wall-
+      following AI, ranged attack, tuning.*
 
 - [ ] **M3 — bestiary & items.** Generators, ghost / demon / sorcerer / lobber,
       potions (screen-clear blast), the thief, Death.

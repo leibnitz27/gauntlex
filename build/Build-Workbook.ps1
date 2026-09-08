@@ -23,6 +23,8 @@ $msoShapeRectangle = 1
 $MAP_ROWS  = 32          # full level grid stamped onto each level sheet
 $MAP_COLS  = 32
 
+& (Join-Path $PSScriptRoot 'Check-Level.ps1')   # fail the build on an unbeatable level
+
 $excel = New-Object -ComObject Excel.Application
 $excel.Visible = $false
 $excel.DisplayAlerts = $false

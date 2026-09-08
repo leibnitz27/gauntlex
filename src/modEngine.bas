@@ -6,9 +6,11 @@ Option Explicit
 '
 '  VBA has no game loop, so this is it: poll -> update ->
 '  render -> DoEvents -> Sleep the remainder of the frame.
-'  Arrow keys are trapped for the loop's lifetime so they
-'  drive the player instead of the Excel selection; the
-'  physical key state is still visible to GetAsyncKeyState.
+'  Keys that would edit / move the cell selection (arrows,
+'  space, enter, tab, F2, delete, backspace) are swallowed for
+'  the loop's lifetime - otherwise e.g. space opens cell edit
+'  mode and the next Range write throws. GetAsyncKeyState still
+'  sees the physical keyboard regardless.
 ' ============================================================
 
 Private mRunning As Boolean
@@ -19,7 +21,10 @@ Public Sub StartGauntlex()
 
     On Error GoTo Cleanup
     Application.EnableEvents = False
-    TrapArrows True
+    TrapKeys True
+    On Error Resume Next
+    Application.Interactive = False     ' Excel ignores keyboard/mouse; we poll GetAsyncKeyState directly
+    On Error GoTo Cleanup
     SetPlayButton False
 
     GameInit
@@ -29,6 +34,7 @@ Public Sub StartGauntlex()
 
     Dim tPrev As Long, tNow As Long, dt As Long, spent As Long
     Dim frames As Long, fpsClock As Long, fps As Double
+    Dim endAt As Long                       ' auto-exit time once WON / OVER
     tPrev = timeGetTime()
     fpsClock = tPrev
 
@@ -43,6 +49,10 @@ Public Sub StartGauntlex()
 
         GameUpdate dt
         RenderFrame fps
+
+        ' hold the result frame briefly, then end the loop (ESC still cuts short)
+        If endAt = 0 And (gState = "WON" Or gState = "OVER") Then endAt = tNow + 1800
+        If endAt <> 0 And tNow >= endAt Then mRunning = False
 
         frames = frames + 1
         If tNow - fpsClock >= 1000 Then
@@ -59,10 +69,13 @@ Public Sub StartGauntlex()
 Cleanup:
     Dim n As Long, d As String
     n = Err.Number: d = Err.Description
-    TrapArrows False
+    On Error Resume Next
+    Application.Interactive = True
+    TrapKeys False
     SetPlayButton True
     Application.EnableEvents = True
     mRunning = False
+    On Error GoTo 0
     If n <> 0 Then MsgBox "Gauntlex halted." & vbCrLf & "Error " & n & ": " & d, vbExclamation
 End Sub
 
@@ -77,13 +90,16 @@ Public Sub StopGauntlex()
     mRunning = False
 End Sub
 
-Private Sub TrapArrows(ByVal enable As Boolean)
+Private Sub TrapKeys(ByVal enable As Boolean)
     Dim k As Variant
-    For Each k In Array("{UP}", "{DOWN}", "{LEFT}", "{RIGHT}")
+    For Each k In Array("{UP}", "{DOWN}", "{LEFT}", "{RIGHT}", _
+                       " ", "~", "{ENTER}", "{TAB}", "{F2}", "{DELETE}", "{BS}")
+        On Error Resume Next                   ' some tokens vary by Excel build
         If enable Then
             Application.OnKey CStr(k), ""      ' swallow
         Else
             Application.OnKey CStr(k)          ' restore default
         End If
+        On Error GoTo 0
     Next k
 End Sub

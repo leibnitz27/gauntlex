@@ -102,20 +102,28 @@ Public Sub RenderFrame(ByVal fps As Double)
         Next c
     Next r
 
-    ' player: a 2x2 half-cell footprint
-    Dim dr As Long, dc As Long, vr As Long, vc As Long
-    For dr = 0 To 1
-        For dc = 0 To 1
-            vr = (gPlHR + dr) - gCamR + 1
-            vc = (gPlHC + dc) - gCamC + 1
-            If vr >= 1 And vr <= VIEW_ROWS And vc >= 1 And vc <= VIEW_COLS Then
-                mBuf(vr, vc) = T_PLAYER
-            End If
-        Next dc
-    Next dr
+    ' grunts, then the player on top - each a 2x2 half-cell footprint
+    Dim i As Long
+    For i = 1 To gGrCount
+        If gGrAlive(i) Then Stamp gGrHR(i), gGrHC(i), T_GRUNT
+    Next i
+    Stamp gPlHR, gPlHC, T_PLAYER
 
     mView.Value = mBuf
     DrawHud mView.Worksheet, fps
+End Sub
+
+Private Sub Stamp(ByVal hr As Long, ByVal hc As Long, ByVal glyph As String)
+    Dim dr As Long, dc As Long, vr As Long, vc As Long
+    For dr = 0 To 1
+        For dc = 0 To 1
+            vr = (hr + dr) - gCamR + 1
+            vc = (hc + dc) - gCamC + 1
+            If vr >= 1 And vr <= VIEW_ROWS And vc >= 1 And vc <= VIEW_COLS Then
+                mBuf(vr, vc) = glyph
+            End If
+        Next dc
+    Next dr
 End Sub
 
 Private Sub DrawHud(ByVal ws As Worksheet, ByVal fps As Double)
@@ -123,10 +131,16 @@ Private Sub DrawHud(ByVal ws As Worksheet, ByVal fps As Double)
     ws.Cells(2, h).Value = "GAUNTLEX"
     ws.Cells(4, h).Value = "HEALTH   " & Format$(gHealth, "0000")
     ws.Cells(5, h).Value = "SCORE    " & Format$(gScore, "000000")
-    ws.Cells(6, h).Value = "KEYS     " & gKeys
-    ws.Cells(7, h).Value = "POTIONS  " & gPotions
-    ws.Cells(10, h).Value = "fps " & Format$(fps, "0")
-    ws.Cells(11, h).Value = "blk " & ((gPlHR + 1) \ 2) & "," & ((gPlHC + 1) \ 2)
-    ws.Cells(12, h).Value = "cam " & gCamR & "," & gCamC
-    ws.Cells(14, h).Value = IIf(gState = "WON", "*** CLEARED - ESC ***", "arrows move / ESC quit")
+    ws.Cells(6, h).Value = "LIVES    " & gLives
+    ws.Cells(7, h).Value = "KEYS     " & gKeys
+    ws.Cells(8, h).Value = "POTIONS  " & gPotions
+    ws.Cells(11, h).Value = "fps " & Format$(fps, "0")
+    ws.Cells(12, h).Value = "blk " & ((gPlHR + 1) \ 2) & "," & ((gPlHC + 1) \ 2)
+    Dim msg As String
+    Select Case gState
+        Case "WON":  msg = "*** LEVEL CLEARED - ESC ***"
+        Case "OVER": msg = "*** GAME OVER - ESC ***"
+        Case Else:   msg = "arrows move / ESC quit"
+    End Select
+    ws.Cells(14, h).Value = msg
 End Sub
