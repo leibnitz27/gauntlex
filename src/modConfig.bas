@@ -42,14 +42,31 @@ Public Const LEVEL_SHEET  As String = "L01"
 ' ---- Timing ----
 Public Const TARGET_FPS As Long = 25
 Public Const FRAME_MS   As Long = 40
-Public Const MOVE_MS    As Long = 60              ' one half-cell step this often while a key is held
+Public Const MOVE_MS    As Long = 60              ' player: one half-cell step this often while a key is held
+Public Const GRUNT_MS   As Long = 130             ' grunts: one half-cell step this often
+Public Const DRAIN_MS   As Long = 1100            ' health lost per tick just for being alive
 
 ' ---- Tiles (block grid) ----
 Public Const T_FLOOR    As String = "."
 Public Const T_WALL     As String = "#"
 Public Const T_SPAWN    As String = "S"
 Public Const T_EXIT     As String = "X"
+Public Const T_FOOD     As String = "+"          ' restores health
+Public Const T_KEY      As String = "K"
+Public Const T_DOOR     As String = "D"          ' solid until opened with a key
+Public Const T_GRUNTSP  As String = "G"          ' grunt spawn marker (cleared to floor at load)
 Public Const T_PLAYER   As String = "@"
+Public Const T_GRUNT    As String = "g"
+
+' ---- Rules ----
+Public Const START_HEALTH   As Long = 2000
+Public Const START_LIVES    As Long = 3
+Public Const DRAIN_AMOUNT   As Long = 1
+Public Const FOOD_VALUE     As Long = 350
+Public Const GRUNT_TOUCH_DMG As Long = 4          ' per grunt tick while a grunt overlaps you
+Public Const SCORE_GRUNT    As Long = 10
+Public Const SCORE_EXIT     As Long = 100
+Public Const MAX_GRUNTS     As Long = 96
 
 ' ---- Colours ----
 Public Const CLR_BG     As Long = 0
