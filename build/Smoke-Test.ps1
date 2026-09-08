@@ -108,6 +108,13 @@ try {
     $s = State
     Check "door opens with key"      ($s.plHR -eq 53 -and $s.keys -eq 0) "plHR $($s.plHR) keys $($s.keys)"
 
+    # ---- M2: reaching the exit wins ----
+    $excel.Run('GameInit')
+    $excel.Run('DebugWarp', [int]57, [int]57)        # exit block (29,29) = half-cell (57,57)
+    $excel.Run('DebugUpdate', [int]50)
+    $s = State
+    Check "exit -> WON +100"          ($s.st -eq 'WON' -and $s.score -eq 100) "$($s.st) score $($s.score)"
+
     # ---- M2: death costs a life and respawns; out of lives -> OVER ----
     $excel.Run('GameInit')
     $excel.Run('DebugSetHealth', [int]2)

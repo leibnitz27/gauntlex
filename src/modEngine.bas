@@ -34,6 +34,7 @@ Public Sub StartGauntlex()
 
     Dim tPrev As Long, tNow As Long, dt As Long, spent As Long
     Dim frames As Long, fpsClock As Long, fps As Double
+    Dim endAt As Long                       ' auto-exit time once WON / OVER
     tPrev = timeGetTime()
     fpsClock = tPrev
 
@@ -48,6 +49,10 @@ Public Sub StartGauntlex()
 
         GameUpdate dt
         RenderFrame fps
+
+        ' hold the result frame briefly, then end the loop (ESC still cuts short)
+        If endAt = 0 And (gState = "WON" Or gState = "OVER") Then endAt = tNow + 1800
+        If endAt <> 0 And tNow >= endAt Then mRunning = False
 
         frames = frames + 1
         If tNow - fpsClock >= 1000 Then
