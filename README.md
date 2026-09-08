@@ -167,5 +167,10 @@ Generators spawn an actor into a free adjacent cell on a per-generator timer.
 - [ ] **M4 — game shape.** Four characters + select screen, level chaining +
       loader, title screen, sound.
 
-- [ ] **M5 — fidelity pass.** Authentic arcade level data + a real tile skin,
-      AI/timing tuned to the original, 2-player co-op.
+- [ ] **M5 — fidelity pass.** Authentic level data, AI/timing tuned to the
+      original, 2-player co-op, and the **picture-Shape renderer** (decided by
+      the `spike-renderer` spike): the glyph blit is replaced by two Shape
+      pools — a fixed ~180-Shape maze grid (never moved; camera scroll changes
+      each Shape's tile) and a ~64-Shape actor pool (moved per frame, tile
+      swapped only on facing/anim change), textured from `reference/genesis-tiles/`.
+      Coloured-cell rendering was measured slower and dropped.

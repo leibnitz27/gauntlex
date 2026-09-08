@@ -16,3 +16,6 @@ reference/genesis-tiles/
 # Editor / OS
 .DS_Store
 Thumbs.db
+
+# Spike build artifact
+spike.xlsm
