@@ -130,8 +130,9 @@ Public Sub RenderTitle()
     ClearBuf
     Line8 4, "G A U N T L E X"
     Line8 8, "the spreadsheet dungeon"
-    Line8 13, "PRESS  SPACE  TO  BEGIN"
-    Line8 17, "arrows move   space fire   C potion   ESC quit"
+    Line8 12, "PRESS  SPACE  TO  BEGIN"
+    Line8 16, "ARROWS move     SPACE fire"
+    Line8 18, "C potion     ESC quit"
     mView.Value = mBuf
     BlankHud
 End Sub
@@ -146,7 +147,7 @@ Public Sub RenderSelect(ByVal cursor As Long)
         Line8 5 + c * 2, s
     Next c
     Line8 15, CharBlurb(cursor)
-    Line8 18, "left / right to choose   SPACE to start"
+    Line8 18, "LEFT RIGHT choose    SPACE start"
     mView.Value = mBuf
     BlankHud
 End Sub
@@ -160,15 +161,16 @@ Private Sub ClearBuf()
     Next r
 End Sub
 
-' write text centred on row r (each char in its own half-cell)
+' write text centred on row r (each char in its own half-cell); over-long
+' text is truncated from the right rather than clipped both ends to a mush
 Private Sub Line8(ByVal r As Long, ByVal text As String)
     If r < 1 Or r > VIEW_ROWS Then Exit Sub
-    Dim n As Long, start As Long, i As Long
-    n = Len(text)
-    start = (VIEW_COLS - n) \ 2 + 1
-    For i = 1 To n
-        Dim c As Long: c = start + i - 1
-        If c >= 1 And c <= VIEW_COLS Then mBuf(r, c) = Mid$(text, i, 1)
+    Dim t As String: t = text
+    If Len(t) > VIEW_COLS Then t = Left$(t, VIEW_COLS)
+    Dim start As Long, i As Long
+    start = (VIEW_COLS - Len(t)) \ 2 + 1
+    For i = 1 To Len(t)
+        mBuf(r, start + i - 1) = Mid$(t, i, 1)
     Next i
 End Sub
 
