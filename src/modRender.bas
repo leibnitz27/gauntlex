@@ -102,10 +102,17 @@ Public Sub RenderFrame(ByVal fps As Double)
         Next c
     Next r
 
-    ' grunts, then the player on top - each a 2x2 half-cell footprint
+    ' projectiles (points), entities (2x2), then the player on top
     Dim i As Long
-    For i = 1 To gGrCount
-        If gGrAlive(i) Then Stamp gGrHR(i), gGrHC(i), T_GRUNT
+    For i = 1 To gPrjN
+        If gPrjKind(i) <> 0 Then Poke gPrjHR(i), gPrjHC(i), IIf(gPrjKind(i) = P_PLAYER, "*", "!")
+    Next i
+    For i = 1 To gEntN
+        Select Case gEntKind(i)
+            Case K_GRUNT: Stamp gEntHR(i), gEntHC(i), "g"
+            Case K_GHOST: Stamp gEntHR(i), gEntHC(i), "o"
+            Case K_DEMON: Stamp gEntHR(i), gEntHC(i), "d"
+        End Select
     Next i
     Stamp gPlHR, gPlHC, T_PLAYER
 
@@ -114,16 +121,18 @@ Public Sub RenderFrame(ByVal fps As Double)
 End Sub
 
 Private Sub Stamp(ByVal hr As Long, ByVal hc As Long, ByVal glyph As String)
-    Dim dr As Long, dc As Long, vr As Long, vc As Long
+    Dim dr As Long, dc As Long
     For dr = 0 To 1
         For dc = 0 To 1
-            vr = (hr + dr) - gCamR + 1
-            vc = (hc + dc) - gCamC + 1
-            If vr >= 1 And vr <= VIEW_ROWS And vc >= 1 And vc <= VIEW_COLS Then
-                mBuf(vr, vc) = glyph
-            End If
+            Poke hr + dr, hc + dc, glyph
         Next dc
     Next dr
+End Sub
+
+Private Sub Poke(ByVal hr As Long, ByVal hc As Long, ByVal glyph As String)
+    Dim vr As Long, vc As Long
+    vr = hr - gCamR + 1: vc = hc - gCamC + 1
+    If vr >= 1 And vr <= VIEW_ROWS And vc >= 1 And vc <= VIEW_COLS Then mBuf(vr, vc) = glyph
 End Sub
 
 Private Sub DrawHud(ByVal ws As Worksheet, ByVal fps As Double)
@@ -134,7 +143,8 @@ Private Sub DrawHud(ByVal ws As Worksheet, ByVal fps As Double)
     ws.Cells(6, h).Value = "LIVES    " & gLives
     ws.Cells(7, h).Value = "KEYS     " & gKeys
     ws.Cells(8, h).Value = "POTIONS  " & gPotions
-    ws.Cells(11, h).Value = "fps " & Format$(fps, "0")
+    ws.Cells(10, h).Value = "SPACE fire  C potion"
+    ws.Cells(11, h).Value = "fps " & Format$(fps, "0") & "  ent " & CountEnts()
     ws.Cells(12, h).Value = "blk " & ((gPlHR + 1) \ 2) & "," & ((gPlHC + 1) \ 2)
     Dim msg As String
     Select Case gState
@@ -144,3 +154,10 @@ Private Sub DrawHud(ByVal ws As Worksheet, ByVal fps As Double)
     End Select
     ws.Cells(14, h).Value = msg
 End Sub
+
+Private Function CountEnts() As Long
+    Dim i As Long
+    For i = 1 To gEntN
+        If gEntKind(i) <> K_NONE Then CountEnts = CountEnts + 1
+    Next i
+End Function

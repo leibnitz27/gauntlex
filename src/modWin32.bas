@@ -21,6 +21,8 @@ Public Const VK_UP     As Long = &H26
 Public Const VK_RIGHT  As Long = &H27
 Public Const VK_DOWN   As Long = &H28
 Public Const VK_ESCAPE As Long = &H1B
+Public Const VK_SPACE  As Long = &H20
+Public Const VK_C      As Long = &H43
 
 ' True while the physical key is down, regardless of which window has focus.
 Public Function KeyDown(ByVal vKey As Long) As Boolean

@@ -168,8 +168,18 @@ Generators spawn an actor into a free adjacent cell on a per-generator timer.
       `build\Smoke-Test.ps1` (20 checks). *Deferred: generators (M3), wall-
       following AI, ranged attack, tuning.*
 
-- [ ] **M3 — bestiary & items.** Generators, ghost / demon / sorcerer / lobber,
-      potions (screen-clear blast), the thief, Death.
+- [x] **M3a — entities, generators, fire.** Typed entity arrays
+      (`gEnt{Kind,HR,HC,HP,T}`, `K_NONE` = free slot) replace the M2 grunt
+      arrays. Level tiles `G/O/E` are grunt/ghost/demon **generators** - solid,
+      3 HP, spawn their kind into a free neighbour every `GEN_SPAWN_MS` while
+      on screen (capped per kind), destroyed by melee/shots (+100). Player
+      **fires** (`SPACE`) in its facing direction; projectiles (`gPrj*`) hit
+      walls/entities/generators; **demons fire back**. Ghost is a kamikaze
+      (big hit, then gone). `build\Check-Level.ps1` checks generators are
+      approachable. Verified by `build\Smoke-Test.ps1` (25 checks).
+- [ ] **M3b — specials & potions.** Sorcerer (flicker-invisible), lobber
+      (arcing rocks over walls), potions (`P` pickup + `C` screen-clear blast),
+      the thief, Death.
 
 - [ ] **M4 — game shape.** Four characters + select screen, level chaining +
       loader, title screen, sound.
