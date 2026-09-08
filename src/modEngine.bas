@@ -34,8 +34,8 @@ Public Sub StartGauntlex()
     Dim tPrev As Long, tNow As Long, dt As Long, spent As Long
     Dim frames As Long, fpsClock As Long, fps As Double
     Dim resultAt As Long, cursor As Long
-    Dim firePrev As Boolean, lPrev As Boolean, rPrev As Boolean
-    Dim fireEdge As Boolean, lEdge As Boolean, rEdge As Boolean
+    Dim firePrev As Boolean, prevPrev As Boolean, nextPrev As Boolean
+    Dim fireEdge As Boolean, prevEdge As Boolean, nextEdge As Boolean
     tPrev = timeGetTime()
     fpsClock = tPrev
 
@@ -47,9 +47,13 @@ Public Sub StartGauntlex()
 
         PollInput
         If gInQuit Then mRunning = False
+        ' menu nav - up OR left = previous, down OR right = next (edge-triggered)
+        Dim prevHeld As Boolean, nextHeld As Boolean
+        prevHeld = gInUp Or gInLeft
+        nextHeld = gInDown Or gInRight
         fireEdge = gInFire And Not firePrev: firePrev = gInFire
-        lEdge = gInLeft And Not lPrev:       lPrev = gInLeft
-        rEdge = gInRight And Not rPrev:       rPrev = gInRight
+        prevEdge = prevHeld And Not prevPrev: prevPrev = prevHeld
+        nextEdge = nextHeld And Not nextPrev: nextPrev = nextHeld
 
         Select Case gState
             Case "TITLE"
@@ -57,8 +61,8 @@ Public Sub StartGauntlex()
                 If fireEdge Then gState = "SELECT": cursor = gChar
 
             Case "SELECT"
-                If lEdge Then cursor = (cursor + CHAR_COUNT - 1) Mod CHAR_COUNT
-                If rEdge Then cursor = (cursor + 1) Mod CHAR_COUNT
+                If prevEdge Then cursor = (cursor + CHAR_COUNT - 1) Mod CHAR_COUNT
+                If nextEdge Then cursor = (cursor + 1) Mod CHAR_COUNT
                 RenderSelect cursor
                 If fireEdge Then
                     gChar = cursor

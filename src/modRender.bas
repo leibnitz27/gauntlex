@@ -147,7 +147,7 @@ Public Sub RenderSelect(ByVal cursor As Long)
         Line8 5 + c * 2, s
     Next c
     Line8 15, CharBlurb(cursor)
-    Line8 18, "LEFT RIGHT choose    SPACE start"
+    Line8 18, "ARROWS choose     SPACE start"
     mView.Value = mBuf
     BlankHud
 End Sub
