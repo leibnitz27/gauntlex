@@ -189,8 +189,18 @@ Generators spawn an actor into a free adjacent cell on a per-generator timer.
       routes melee/shots (Death soaks, everything else dies at once). Verified
       by `build\Smoke-Test.ps1` (28 checks).
 
-- [ ] **M4 — game shape.** Four characters + select screen, level chaining +
-      loader, title screen, sound.
+- [x] **M4a — game shape.** `modEngine` is now a flow state machine:
+      **TITLE → SELECT → PLAY → (WON/OVER) → TITLE** (fire/arrow key *edges*,
+      not held). `modChar`: the four heroes as stat functions - `CharMoveMs`
+      (Elf fastest), `CharShotMs`, `CharArmourPct` (Valkyrie 60 / Wizard 145),
+      `CharHitPower` (Warrior 2 vs generators & Death), `CharPotionMargin`
+      (Wizard's blast reaches 10 vs 2). `modGame.Hurt` scales every combat hit
+      by armour. `modRender` gains `RenderTitle` / `RenderSelect` (centred
+      text into the viewport); HUD shows the chosen hero. Verified by
+      `build\Smoke-Test.ps1` (34 checks).
+- [ ] **M4b — levels & sound.** Level chaining (`L02`, `L03`…), level-clear →
+      next level (score/lives/potions carry), a victory screen, and sound
+      (async `Application.Speech` call-outs).
 
 - [ ] **M5 — fidelity pass.** Authentic level data, AI/timing tuned to the
       original, 2-player co-op, and the **picture-Shape renderer** (decided by

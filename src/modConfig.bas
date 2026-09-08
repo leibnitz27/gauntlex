@@ -117,5 +117,7 @@ Public Const MAX_GEN      As Long = 64
 Public Const MAX_PRJ      As Long = 96
 
 ' ---- Colours ----
-Public Const CLR_BG     As Long = 0
-Public Const CLR_FG     As Long = 5308500         ' RGB(84,208,80) - phosphor green
+' VBA Const can't call RGB(), so these are precomputed R + G*256 + B*65536.
+Public Const CLR_BG     As Long = 0               ' black
+Public Const CLR_FG     As Long = 6348880         ' RGB(80,224,96)  - phosphor green
+' alt: 43775 = RGB(255,170,0) amber  |  16777215 = white

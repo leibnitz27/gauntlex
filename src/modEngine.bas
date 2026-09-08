@@ -27,14 +27,15 @@ Public Sub StartGauntlex()
     On Error GoTo Cleanup
     SetPlayButton False
 
-    GameInit
     FitViewport         ' size the view to the Excel window (capped at the map)
     RenderInit
-    CenterCamera        ' now that the viewport size is known
+    gState = "TITLE"
 
     Dim tPrev As Long, tNow As Long, dt As Long, spent As Long
     Dim frames As Long, fpsClock As Long, fps As Double
-    Dim endAt As Long                       ' auto-exit time once WON / OVER
+    Dim resultAt As Long, cursor As Long
+    Dim firePrev As Boolean, prevPrev As Boolean, nextPrev As Boolean
+    Dim fireEdge As Boolean, prevEdge As Boolean, nextEdge As Boolean
     tPrev = timeGetTime()
     fpsClock = tPrev
 
@@ -46,13 +47,39 @@ Public Sub StartGauntlex()
 
         PollInput
         If gInQuit Then mRunning = False
+        ' menu nav - up OR left = previous, down OR right = next (edge-triggered)
+        Dim prevHeld As Boolean, nextHeld As Boolean
+        prevHeld = gInUp Or gInLeft
+        nextHeld = gInDown Or gInRight
+        fireEdge = gInFire And Not firePrev: firePrev = gInFire
+        prevEdge = prevHeld And Not prevPrev: prevPrev = prevHeld
+        nextEdge = nextHeld And Not nextPrev: nextPrev = nextHeld
 
-        GameUpdate dt
-        RenderFrame fps
+        Select Case gState
+            Case "TITLE"
+                RenderTitle
+                If fireEdge Then gState = "SELECT": cursor = gChar
 
-        ' hold the result frame briefly, then end the loop (ESC still cuts short)
-        If endAt = 0 And (gState = "WON" Or gState = "OVER") Then endAt = tNow + 1800
-        If endAt <> 0 And tNow >= endAt Then mRunning = False
+            Case "SELECT"
+                If prevEdge Then cursor = (cursor + CHAR_COUNT - 1) Mod CHAR_COUNT
+                If nextEdge Then cursor = (cursor + 1) Mod CHAR_COUNT
+                RenderSelect cursor
+                If fireEdge Then
+                    gChar = cursor
+                    GameInit
+                    CenterCamera
+                    gState = "PLAY"
+                End If
+
+            Case "PLAY"
+                GameUpdate dt
+                RenderFrame fps
+
+            Case "WON", "OVER"
+                RenderFrame fps
+                If resultAt = 0 Then resultAt = tNow + 2200
+                If tNow >= resultAt Then gState = "TITLE": resultAt = 0
+        End Select
 
         frames = frames + 1
         If tNow - fpsClock >= 1000 Then
