@@ -124,6 +124,62 @@ Public Sub RenderFrame(ByVal fps As Double)
     DrawHud mView.Worksheet, fps
 End Sub
 
+' ---- title / character select (M4a) --------------------
+
+Public Sub RenderTitle()
+    ClearBuf
+    Line8 4, "G A U N T L E X"
+    Line8 8, "the spreadsheet dungeon"
+    Line8 13, "PRESS  SPACE  TO  BEGIN"
+    Line8 17, "arrows move   space fire   C potion   ESC quit"
+    mView.Value = mBuf
+    BlankHud
+End Sub
+
+Public Sub RenderSelect(ByVal cursor As Long)
+    ClearBuf
+    Line8 2, "CHOOSE YOUR HERO"
+    Dim c As Long, s As String
+    For c = 0 To CHAR_COUNT - 1
+        s = IIf(c = cursor, "> ", "  ") & CharName(c)
+        If c = cursor Then s = s & "  <"
+        Line8 5 + c * 2, s
+    Next c
+    Line8 15, CharBlurb(cursor)
+    Line8 18, "left / right to choose   SPACE to start"
+    mView.Value = mBuf
+    BlankHud
+End Sub
+
+Private Sub ClearBuf()
+    Dim r As Long, c As Long
+    For r = 1 To VIEW_ROWS
+        For c = 1 To VIEW_COLS
+            mBuf(r, c) = " "
+        Next c
+    Next r
+End Sub
+
+' write text centred on row r (each char in its own half-cell)
+Private Sub Line8(ByVal r As Long, ByVal text As String)
+    If r < 1 Or r > VIEW_ROWS Then Exit Sub
+    Dim n As Long, start As Long, i As Long
+    n = Len(text)
+    start = (VIEW_COLS - n) \ 2 + 1
+    For i = 1 To n
+        Dim c As Long: c = start + i - 1
+        If c >= 1 And c <= VIEW_COLS Then mBuf(r, c) = Mid$(text, i, 1)
+    Next i
+End Sub
+
+Private Sub BlankHud()
+    Dim ws As Worksheet: Set ws = mView.Worksheet
+    Dim r As Long
+    For r = 1 To VIEW_ROWS
+        ws.Cells(r, mHudCol).Value = ""
+    Next r
+End Sub
+
 Private Sub Stamp(ByVal hr As Long, ByVal hc As Long, ByVal glyph As String)
     Dim dr As Long, dc As Long
     For dr = 0 To 1
@@ -141,7 +197,7 @@ End Sub
 
 Private Sub DrawHud(ByVal ws As Worksheet, ByVal fps As Double)
     Dim h As Long: h = mHudCol
-    ws.Cells(2, h).Value = "GAUNTLEX"
+    ws.Cells(2, h).Value = CharName(gChar)
     ws.Cells(4, h).Value = "HEALTH   " & Format$(gHealth, "0000")
     ws.Cells(5, h).Value = "SCORE    " & Format$(gScore, "000000")
     ws.Cells(6, h).Value = "LIVES    " & gLives
@@ -152,8 +208,8 @@ Private Sub DrawHud(ByVal ws As Worksheet, ByVal fps As Double)
     ws.Cells(12, h).Value = "blk " & ((gPlHR + 1) \ 2) & "," & ((gPlHC + 1) \ 2)
     Dim msg As String
     Select Case gState
-        Case "WON":  msg = "*** LEVEL CLEARED - ESC ***"
-        Case "OVER": msg = "*** GAME OVER - ESC ***"
+        Case "WON":  msg = "*** LEVEL CLEARED ***"
+        Case "OVER": msg = "*** GAME OVER ***"
         Case Else:   msg = "arrows move / ESC quit"
     End Select
     ws.Cells(14, h).Value = msg

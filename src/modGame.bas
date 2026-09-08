@@ -17,7 +17,8 @@ Option Explicit
 Public gPlHR  As Long, gPlHC As Long
 Public gFaceDR As Long, gFaceDC As Long
 Public gCamR  As Long, gCamC As Long
-Public gState As String                  ' "PLAY" | "WON" | "OVER"
+Public gChar  As Long                    ' CHAR_WARRIOR..CHAR_ELF
+Public gState As String                  ' "TITLE" | "SELECT" | "PLAY" | "WON" | "OVER"
 Public gHealth As Long, gScore As Long, gKeys As Long, gPotions As Long, gLives As Long
 
 ' ---- entities ----
@@ -76,10 +77,10 @@ Public Sub GameUpdate(ByVal dt As Long)
     Loop
 
     mMoveAcc = mMoveAcc + dt
-    If mMoveAcc >= MOVE_MS Then mMoveAcc = 0: StepPlayer
+    If mMoveAcc >= CharMoveMs(gChar) Then mMoveAcc = 0: StepPlayer
 
     mShotAcc = mShotAcc + dt
-    If gInFire And mShotAcc >= SHOT_MS Then
+    If gInFire And mShotAcc >= CharShotMs(gChar) Then
         mShotAcc = 0
         FireShot P_PLAYER, gPlHR + gFaceDR, gPlHC + gFaceDC, gFaceDR, gFaceDC, DEMON_SHOT_LIFE
     End If
@@ -198,15 +199,19 @@ Private Sub StepEntities()
     Next i
 End Sub
 
+Private Sub Hurt(ByVal amount As Long)               ' combat damage, scaled by armour
+    gHealth = gHealth - (amount * CharArmourPct(gChar) \ 100)
+End Sub
+
 Private Sub StepChaser(ByVal i As Long, ByVal k As Long, ByVal dmg As Long)
     If mEntTick Mod 2 = 0 Then MoveToward i, gPlHR, gPlHC
-    If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then gHealth = gHealth - dmg
+    If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then Hurt dmg
 End Sub
 
 Private Sub StepGhost(ByVal i As Long)
     MoveToward i, gPlHR, gPlHC                        ' every tick - fast
     If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then
-        gHealth = gHealth - GHOST_DMG
+        Hurt GHOST_DMG
         gEntKind(i) = K_NONE                          ' kamikaze
     End If
 End Sub
@@ -220,7 +225,7 @@ Private Sub StepDemon(ByVal i As Long)
         dr = Sgn(gPlHR - gEntHR(i)): dc = Sgn(gPlHC - gEntHC(i))
         If dr <> 0 Or dc <> 0 Then FireShot P_ENEMY, gEntHR(i) + dr, gEntHC(i) + dc, dr, dc, DEMON_SHOT_LIFE
     End If
-    If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then gHealth = gHealth - GRUNT_TOUCH_DMG
+    If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then Hurt GRUNT_TOUCH_DMG
 End Sub
 
 Private Sub StepLobber(ByVal i As Long)
@@ -241,7 +246,7 @@ Private Sub StepLobber(ByVal i As Long)
             Dim s As Long: s = FireShot(P_LOBBER, gEntHR(i) + dr, gEntHC(i) + dc, dr, dc, LOBBER_ROCK_LIFE)
         End If
     End If
-    If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then gHealth = gHealth - GRUNT_TOUCH_DMG
+    If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then Hurt GRUNT_TOUCH_DMG
 End Sub
 
 Private Sub StepThief(ByVal i As Long)
@@ -264,7 +269,7 @@ End Sub
 
 Private Sub StepDeath(ByVal i As Long)
     If mEntTick Mod 3 = 0 Then MoveToward i, gPlHR, gPlHC     ' slow
-    If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then gHealth = gHealth - DEATH_DRAIN
+    If Overlap(gPlHR, gPlHC, gEntHR(i), gEntHC(i)) Then Hurt DEATH_DRAIN
 End Sub
 
 ' sorcerer flicker - render mirrors this
@@ -288,7 +293,7 @@ End Sub
 ' one melee/shot hit - Death soaks many, everything else dies at once
 Private Sub DamageEntity(ByVal i As Long)
     If gEntKind(i) = K_DEATH Then
-        gEntHP(i) = gEntHP(i) - 1
+        gEntHP(i) = gEntHP(i) - CharHitPower(gChar)
         If gEntHP(i) <= 0 Then KillEntity i
     Else
         KillEntity i
@@ -377,7 +382,7 @@ Private Sub HitGen(ByVal br As Long, ByVal bc As Long)
     Dim i As Long
     For i = 1 To gGenN
         If gGenAlive(i) And gGenBR(i) = br And gGenBC(i) = bc Then
-            gGenHP(i) = gGenHP(i) - 1
+            gGenHP(i) = gGenHP(i) - CharHitPower(gChar)
             If gGenHP(i) <= 0 Then
                 gGenAlive(i) = False
                 gBlock(br, bc) = T_FLOOR
@@ -434,7 +439,7 @@ Private Sub StepProjectiles()
             Next j
         Else
             If PointIn(gPrjHR(i), gPrjHC(i), gPlHR, gPlHC) Then
-                gHealth = gHealth - IIf(gPrjKind(i) = P_LOBBER, LOBBER_DMG, DEMON_SHOT_DMG)
+                Hurt IIf(gPrjKind(i) = P_LOBBER, LOBBER_DMG, DEMON_SHOT_DMG)
                 gPrjKind(i) = 0: GoTo NextP
             End If
         End If
@@ -477,12 +482,12 @@ End Sub
 ' screen-clear blast: everything visible dies (Death included)
 Private Sub UsePotion()
     gPotions = gPotions - 1
-    Dim i As Long
+    Dim i As Long, m As Long: m = CharPotionMargin(gChar)
     For i = 1 To gEntN
-        If gEntKind(i) <> K_NONE And NearCamera(gEntHR(i), gEntHC(i), 2) Then KillEntity i
+        If gEntKind(i) <> K_NONE And NearCamera(gEntHR(i), gEntHC(i), m) Then KillEntity i
     Next i
     For i = 1 To gGenN
-        If gGenAlive(i) And NearCamera(gGenBR(i) * 2 - 1, gGenBC(i) * 2 - 1, 2) Then
+        If gGenAlive(i) And NearCamera(gGenBR(i) * 2 - 1, gGenBC(i) * 2 - 1, m) Then
             gGenAlive(i) = False
             gBlock(gGenBR(i), gGenBC(i)) = T_FLOOR
             gScore = gScore + SCORE_GEN
@@ -490,7 +495,7 @@ Private Sub UsePotion()
     Next i
     For i = 1 To gPrjN
         If gPrjKind(i) <> 0 And gPrjKind(i) <> P_PLAYER Then
-            If NearCamera(gPrjHR(i), gPrjHC(i), 2) Then gPrjKind(i) = 0
+            If NearCamera(gPrjHR(i), gPrjHC(i), m) Then gPrjKind(i) = 0
         End If
     Next i
 End Sub
@@ -555,6 +560,7 @@ Public Sub DebugFire()
 End Sub
 Public Sub DebugSetKeys(ByVal k As Long): gKeys = k: End Sub
 Public Sub DebugSetPotions(ByVal p As Long): gPotions = p: End Sub
+Public Sub DebugSetChar(ByVal c As Long): gChar = c: End Sub
 Public Sub DebugKillGens()                       ' test isolation - stop all generators
     Dim i As Long
     For i = 1 To gGenN: gGenAlive(i) = False: Next i
@@ -589,5 +595,5 @@ Public Function DebugState() As String
                  ";" & gPlHR & ";" & gPlHC & ";" & gState & ";" & Format$(gCellPts, "0.0") & _
                  ";" & gLives & ";" & gHealth & ";" & gKeys & ";" & gScore & _
                  ";" & ea & ";" & e1r & ";" & e1c & ";" & ga & ";" & pa & _
-                 ";" & gPotions & ";" & e1k
+                 ";" & gPotions & ";" & e1k & ";" & gChar
 End Function
