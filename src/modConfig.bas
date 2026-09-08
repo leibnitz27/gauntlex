@@ -40,11 +40,15 @@ Public Const SCREEN_SHEET As String = "Screen"
 Public Const LEVEL_SHEET  As String = "L01"
 
 ' ---- Timing ----
-Public Const TARGET_FPS As Long = 25
-Public Const FRAME_MS   As Long = 40
-Public Const MOVE_MS    As Long = 60              ' player: one half-cell step this often while a key is held
-Public Const GRUNT_MS   As Long = 130             ' grunts: one half-cell step this often
-Public Const DRAIN_MS   As Long = 1100            ' health lost per tick just for being alive
+Public Const TARGET_FPS  As Long = 25
+Public Const FRAME_MS    As Long = 40
+Public Const MOVE_MS     As Long = 60             ' player: one half-cell step this often while a key is held
+Public Const ENT_TICK_MS As Long = 65            ' base monster tick; kinds move every 1-3 ticks
+Public Const DRAIN_MS    As Long = 1100           ' health lost per tick just for being alive
+Public Const SHOT_MS     As Long = 200            ' player fire cooldown
+Public Const PRJ_MS      As Long = 45            ' projectile step interval
+Public Const GEN_SPAWN_MS As Long = 2600          ' generator spawn interval (while on screen)
+Public Const DEMON_SHOOT_MS As Long = 1300
 
 ' ---- Tiles (block grid) ----
 Public Const T_FLOOR    As String = "."
@@ -54,19 +58,38 @@ Public Const T_EXIT     As String = "X"
 Public Const T_FOOD     As String = "+"          ' restores health
 Public Const T_KEY      As String = "K"
 Public Const T_DOOR     As String = "D"          ' solid until opened with a key
-Public Const T_GRUNTSP  As String = "G"          ' grunt spawn marker (cleared to floor at load)
+Public Const T_GEN_GRUNT As String = "G"         ' generators (each spawns its monster while on screen)
+Public Const T_GEN_GHOST As String = "O"
+Public Const T_GEN_DEMON As String = "E"
 Public Const T_PLAYER   As String = "@"
-Public Const T_GRUNT    As String = "g"
+
+' ---- Entity kinds ----
+Public Const K_NONE  As Long = 0
+Public Const K_GRUNT As Long = 1
+Public Const K_GHOST As Long = 2
+Public Const K_DEMON As Long = 3
+
+Public Const P_PLAYER As Long = 1                ' projectile owner
+Public Const P_ENEMY  As Long = 2
 
 ' ---- Rules ----
-Public Const START_HEALTH   As Long = 2000
-Public Const START_LIVES    As Long = 3
-Public Const DRAIN_AMOUNT   As Long = 1
-Public Const FOOD_VALUE     As Long = 350
-Public Const GRUNT_TOUCH_DMG As Long = 4          ' per grunt tick while a grunt overlaps you
-Public Const SCORE_GRUNT    As Long = 10
-Public Const SCORE_EXIT     As Long = 100
-Public Const MAX_GRUNTS     As Long = 96
+Public Const START_HEALTH    As Long = 2000
+Public Const START_LIVES     As Long = 3
+Public Const DRAIN_AMOUNT    As Long = 1
+Public Const FOOD_VALUE      As Long = 350
+Public Const GRUNT_TOUCH_DMG As Long = 3          ' per entity tick while a monster overlaps you
+Public Const GHOST_DMG       As Long = 55         ' ghost kamikaze hit (then it dies)
+Public Const DEMON_SHOT_DMG  As Long = 70
+Public Const GEN_HP          As Long = 3
+Public Const GEN_KIND_CAP    As Long = 5          ' a generator idles if this many of its kind are already alive
+Public Const SCORE_GRUNT As Long = 10
+Public Const SCORE_GHOST As Long = 12
+Public Const SCORE_DEMON As Long = 40
+Public Const SCORE_GEN   As Long = 100
+Public Const SCORE_EXIT  As Long = 100
+Public Const MAX_ENT     As Long = 200
+Public Const MAX_GEN     As Long = 64
+Public Const MAX_PRJ     As Long = 80
 
 ' ---- Colours ----
 Public Const CLR_BG     As Long = 0
