@@ -64,10 +64,13 @@ try {
     Check "fit cell size in [8..60]pt"   ($s.cell -ge 8 -and $s.cell -le 60) $s.cell
     Check "row height tracks cell size"  ([math]::Abs([double]$ws.Rows(1).Height - $s.cell) -le 1.5) "$([math]::Round([double]$ws.Rows(1).Height,1)) vs $($s.cell)"
 
+    # FitViewport: cell = clamp( min(usableH/VIEW_ROWS, (usableW - HUD_PANEL_PTS)/VIEW_COLS), 8, 60 )
     $uh = [double]$excel.ActiveWindow.UsableHeight
-    Check "playfield fills window height" (
-        [math]::Abs($VR * $s.cell - $uh) -le ($s.cell + 1) -or $s.cell -ge 60 -or $s.cell -le 8
-    ) "$([math]::Round($VR * $s.cell))pt of ${uh}pt"
+    $uw = [double]$excel.ActiveWindow.UsableWidth
+    $expect = [math]::Min($uh / $VR, ($uw - 220) / $VC)
+    $expect = [math]::Max(8, [math]::Min(60, $expect))
+    Check "cell size fits window (h or w bound)" ([math]::Abs($s.cell - $expect) -le 1.0) `
+        "cell $($s.cell), expected ~$([math]::Round($expect,1))  (win ${uw}x${uh})"
 
     Check "HUD panel shows HEALTH" ([string]$ws.Cells.Item(4, $VC + 2).Value2 -like 'HEALTH*') `
         ([string]$ws.Cells.Item(4, $VC + 2).Value2)
