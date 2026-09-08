@@ -5,6 +5,17 @@ gauntlex.xlsm
 ~$*.xls*
 *.tmp
 
+# Loose screenshots / reference images dropped in the repo root
+# (move keepers into reference/ to track them)
+/*.png
+/*.webp
+
+# Sliced sprite tiles - regenerate with reference/slice-tiles.ps1
+reference/genesis-tiles/
+
 # Editor / OS
 .DS_Store
 Thumbs.db
+
+# Spike build artifact
+spike.xlsm

@@ -1,0 +1,9 @@
+# VBA source must be CRLF - the VBE importer mis-parses LF-only files
+# (procedures silently dropped). Keep these CRLF in the working tree.
+*.bas  text eol=crlf
+*.cls  text eol=crlf
+*.frm  text eol=crlf
+
+*.ps1  text eol=crlf
+*.md   text
+*.txt  text

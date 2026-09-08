@@ -108,17 +108,23 @@ Generators spawn an actor into a free adjacent cell on a per-generator timer.
 
 ### What GAUNTLEX takes from this
 
-- **Map is always larger than the viewport.** Levels are up to 32x32 cells;
-  camera follows the player and clamps at level edges.
-- **Cell contract: 1 Excel cell = 1 maze cell (16 px logical).** Whole-cell
-  movement. A wall is one Excel cell; an actor occupies one cell. The 8 px
-  sub-cell grid is skipped — Excel blits whole cells and cannot sub-cell-scroll,
-  so it buys almost nothing here. Revisit only if actor overlap / "half in a
-  doorway" feel turns out to matter.
-- **Viewport: ~24x15 Excel cells** — roomier than the arcade's ~20x11 (screen
-  space is free in Excel), still small enough that scrolling matters on a 32x32
-  map.
-- **HUD: dedicated rows below the viewport** (health, score, keys, potions).
+- **Two grids, both used.** Levels are authored at **block** resolution (16 px:
+  `gBlock`, up to 32x32, `levels/*.txt` one char per block) - walls, doors,
+  items, exits, AI targeting live here. The player and monsters live on the
+  **half-cell** grid (8 px, up to 64x64): **1 Excel cell = 1 half-cell**, an
+  actor is a 2x2 half-cell footprint, and it moves one half-cell at a time.
+  Half-cell moves are what make the C64 feel smooth - the player glides rather
+  than lurching a whole block, and the camera scrolls in half-cells too.
+- **Map is always larger than the viewport.** Camera follows the player (in
+  half-cells) and clamps at level edges.
+- **Viewport: a fixed 18x10 blocks** (`VIEW_BLOCK_COLS/ROWS`) = 36x20
+  half-cells, matching the C64 playfield. `modRender.FitViewport` scales the
+  half-cell render size (`gCellPts`) so the playfield fills the full window
+  **height** - modern screens are wide, so height is the binding axis and the
+  spare width goes to the HUD. It only shrinks below that if the playfield +
+  HUD panel would overrun the width. Resize + PLAY to refit.
+- **HUD: a text column to the right of the playfield** (`HUD_PANEL_PTS` of
+  reserved width) - GAUNTLEX / health / score / keys / potions, arcade-style.
 
 [remake]: https://github.com/mJastrzebski6/Gauntlet-I-c64
 [mame]: https://github.com/mamedev/mame/blob/master/src/mame/atari/gauntlet.cpp
@@ -131,19 +137,25 @@ Generators spawn an actor into a free adjacent cell on a per-generator timer.
       slide, one hand-drawn maze with spawn + exit. *(Viewport == map, no
       camera — the simplification M1 removes.)*
 
-- [ ] **M1 — camera & world.** Decouple the map from the view:
-  - `modConfig`: `VIEW_COLS/ROWS` → **24 x 15**; add `MAP_COLS/ROWS` (up to
-    **32 x 32**).
-  - `modLevel`: load into `gMap` sized to the *level*, not the viewport; a
-    level sheet holds the full map. Add a bigger hand-drawn test level that
-    exceeds the viewport in both axes.
-  - `modGame`: track camera top-left `gCamR/gCamC`; after the player moves,
-    recentre on the player and **clamp** to `[1, MAP_ROWS - VIEW_ROWS + 1]`
-    (and the column equivalent).
-  - `modRender`: blit the `VIEW_ROWS x VIEW_COLS` window at `gCamR/gCamC`
-    into the fixed viewport range; draw the player at
-    `(gPlR - gCamR + 1, gPlC - gCamC + 1)`.
-  - HUD rows below the viewport: health / score / keys / potions placeholders.
+- [x] **M1 — camera & world.** The two-grid world model (see above): block
+      levels, half-cell actors, follow-camera in half-cells clamping at edges,
+      windowed blit, HUD rows. Viewport is a fixed 18x10 blocks; `FitViewport`
+      scales the half-cell size to the window. Verified by
+      `build\Smoke-Test.ps1` (12 checks: fit sizing, 2x2 wall/player patches,
+      camera scroll + clamp, view-relative player).
+  - `modConfig`: `MAP_BLOCK_*` 32x32, `MAP_*` 64x64 half-cells, `VIEW_*`
+    fixed at 36x20 half-cells.
+  - `modLevel`: `gBlock` (32x32); `BlockAtHC` / `IsWallHC` / `FootprintClear`
+    answer in half-cell space. `levels/L01.txt` is a 32x32 block maze.
+  - `modGame`: player footprint top-left `gPlHR/gPlHC`, one-half-cell steps
+    with 2x2 collision + wall-slide; `CenterCamera` clamps to
+    `[1, MAP_ROWS - VIEW_ROWS + 1]`.
+  - `modRender`: `FitViewport` picks `gCellPts` to fill window height;
+    `RenderFrame` blits `BlockAtHC(gCamR+r-1, gCamC+c-1)` (walls/exit render as
+    2x2 quads), stamps the player's 2x2 footprint, and `DrawHud` writes the
+    right-hand text column (health / score / keys / potions placeholders).
+  - *History: the first M1 pass used a single 16px grid with whole-cell moves;
+    reworked to the half-cell model to match the C64's sub-block movement.*
 
 - [ ] **M2 — first real level.** Keys and doors, food (restores health),
       health draining over time, grunts (the 8-direction pursuit AI on a fixed
@@ -155,5 +167,10 @@ Generators spawn an actor into a free adjacent cell on a per-generator timer.
 - [ ] **M4 — game shape.** Four characters + select screen, level chaining +
       loader, title screen, sound.
 
-- [ ] **M5 — fidelity pass.** Authentic arcade level data + a real tile skin,
-      AI/timing tuned to the original, 2-player co-op.
+- [ ] **M5 — fidelity pass.** Authentic level data, AI/timing tuned to the
+      original, 2-player co-op, and the **picture-Shape renderer** (decided by
+      the `spike-renderer` spike): the glyph blit is replaced by two Shape
+      pools — a fixed ~180-Shape maze grid (never moved; camera scroll changes
+      each Shape's tile) and a ~64-Shape actor pool (moved per frame, tile
+      swapped only on facing/anim change), textured from `reference/genesis-tiles/`.
+      Coloured-cell rendering was measured slower and dropped.

@@ -20,9 +20,12 @@ Public Sub StartGauntlex()
     On Error GoTo Cleanup
     Application.EnableEvents = False
     TrapArrows True
+    SetPlayButton False
 
     GameInit
+    FitViewport         ' size the view to the Excel window (capped at the map)
     RenderInit
+    CenterCamera        ' now that the viewport size is known
 
     Dim tPrev As Long, tNow As Long, dt As Long, spent As Long
     Dim frames As Long, fpsClock As Long, fps As Double
@@ -57,9 +60,17 @@ Cleanup:
     Dim n As Long, d As String
     n = Err.Number: d = Err.Description
     TrapArrows False
+    SetPlayButton True
     Application.EnableEvents = True
     mRunning = False
     If n <> 0 Then MsgBox "Gauntlex halted." & vbCrLf & "Error " & n & ": " & d, vbExclamation
+End Sub
+
+' Hidden while the loop runs; shown again on exit so it also means "restart".
+Private Sub SetPlayButton(ByVal visible As Boolean)
+    On Error Resume Next
+    ThisWorkbook.Worksheets(SCREEN_SHEET).Shapes("btnPlay").Visible = visible
+    On Error GoTo 0
 End Sub
 
 Public Sub StopGauntlex()
