@@ -104,8 +104,11 @@ Public Sub ShapesFrame(ByVal fps As Double)
     If mNeedBlank Then BlankPlayfield: mNeedBlank = False   ' kill menu text under the part-transparent tiles
     mParked = False
 
+    ' camera top-left in fractional BLOCK units. gCam* is the half-cell at the
+    ' viewport edge (1-based); block bc's left edge is half-cell 2*bc-1, so the
+    ' block-space camera is (gCam + 1) / 2 to match the actor coordinate system.
     Dim camBR As Double, camBC As Double
-    camBR = (gCamR - 1) / 2#: camBC = (gCamC - 1) / 2#
+    camBR = (gCamR + 1) / 2#: camBC = (gCamC + 1) / 2#
     Dim topB As Long, leftB As Long
     topB = Int(camBR) - 1: leftB = Int(camBC) - 1
 
