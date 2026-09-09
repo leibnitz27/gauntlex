@@ -24,6 +24,7 @@ Private mMz() As Shape
 Private mMzBR() As Long, mMzBC() As Long          ' world block each maze shape shows now
 Private mAct() As Shape
 Private mTag() As String                          ' current fill "pic|colour" per shape (1..MZN maze, MZN+1..MZN+ACT_POOL actors)
+Private mSprCache() As String                     ' stream index -> resolved tile path (vbNullChar = unchecked)
 Private mBlockPts As Double
 Private mDir As String
 Private mReady As Boolean, mParked As Boolean, mNeedBlank As Boolean
@@ -213,8 +214,6 @@ End Function
 
 ' stream index -> tile path ("" if the tile wasn't sliced). Cached: the Dir$
 ' check and the string build happen once per index for the session.
-Private mSprCache() As String
-
 Private Function SprFile(ByVal idx As Long) As String
     If idx < 0 Or idx > 703 Then Exit Function
     If (Not Not mSprCache) = 0 Then
