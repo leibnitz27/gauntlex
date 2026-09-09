@@ -34,9 +34,11 @@ Private mLastCamR As Long, mLastCamC As Long
 ' hidden Excel instance.
 Public Sub DebugShapesCompile()
     If True Then Exit Sub
+    Dim s As String, l As Long
     ShapesFrame 0#
     ParkShapes
-    DrawActors
+    DrawActors 0, 0
+    MazeCell 0, 0, s, l
     PutActor 0, 0, 0, 0#, 0, ""
     Fill Nothing, 0, "", 0
 End Sub
@@ -115,6 +117,7 @@ Public Sub ShapesFrame(ByVal fps As Double)
     Dim moved As Boolean: moved = (gCamR <> mLastCamR Or gCamC <> mLastCamC)
     mLastCamR = gCamR: mLastCamC = gCamC
 
+    Dim pc As String, cl As Long
     If moved Then
         Dim i As Long, r As Long, c As Long, wbr As Long, wbc As Long
         For r = 0 To MZR - 1
@@ -123,22 +126,21 @@ Public Sub ShapesFrame(ByVal fps As Double)
                 wbr = topB + r: wbc = leftB + c
                 mMz(i).Left = (wbc - camBC) * mBlockPts
                 mMz(i).Top = (wbr - camBR) * mBlockPts
-                If wbr <> mMzBR(i) Or wbc <> mMzBC(i) Then
-                    mMzBR(i) = wbr: mMzBC(i) = wbc
-                End If
-                Fill mMz(i), i, mDir & MazeTile(wbr, wbc), 0
+                mMzBR(i) = wbr: mMzBC(i) = wbc
+                MazeCell wbr, wbc, pc, cl
+                Fill mMz(i), i, pc, cl
             Next c
         Next r
     ElseIf gBlocksChanged Then
-        ' a generator died / a door opened - re-check every maze shape's tile
         Dim k As Long
         For k = 1 To MZN
-            Fill mMz(k), k, mDir & MazeTile(mMzBR(k), mMzBC(k)), 0
+            MazeCell mMzBR(k), mMzBC(k), pc, cl
+            Fill mMz(k), k, pc, cl
         Next k
     End If
     gBlocksChanged = False
 
-    DrawActors
+    DrawActors topB, leftB
     DrawHud ThisWorkbook.Worksheets(SCREEN_SHEET), fps
     Application.ScreenUpdating = prevSU
 End Sub
@@ -148,15 +150,29 @@ Private Sub BlankPlayfield()
     ws.Range(ws.Cells(1, 1), ws.Cells(VIEW_ROWS, VIEW_COLS)).ClearContents
 End Sub
 
-Private Sub DrawActors()
-    Dim n As Long, i As Long
+Private Sub DrawActors(ByVal topB As Long, ByVal leftB As Long)
+    Dim n As Long, i As Long, br As Long, bc As Long
+
+    ' floor items - small coloured markers (real sprites in M5b)
+    For br = topB To topB + MZR
+        For bc = leftB To leftB + MZC
+            If InMap(br, bc) Then
+                Select Case gBlock(br, bc)
+                    Case T_KEY:    n = PutActor(n, br * 2 - 1, bc * 2 - 1, 0.55, RGB(245, 225, 40), "")
+                    Case T_FOOD:   n = PutActor(n, br * 2 - 1, bc * 2 - 1, 0.55, RGB(215, 70, 60), "")
+                    Case T_POTION: n = PutActor(n, br * 2 - 1, bc * 2 - 1, 0.55, RGB(70, 130, 245), "")
+                End Select
+            End If
+        Next bc
+    Next br
+
     For i = 1 To gPrjN
         If gPrjKind(i) <> 0 Then n = PutActor(n, gPrjHR(i), gPrjHC(i), 0.5, PrjColour(gPrjKind(i)), "")
     Next i
     For i = 1 To gEntN
         If gEntKind(i) <> K_NONE Then
             If Not (gEntKind(i) = K_SORC) Or SorcVisible(i) Then
-                n = PutActor(n, gEntHR(i), gEntHC(i), 1#, EntColour(gEntKind(i)), "")
+                n = PutActor(n, gEntHR(i), gEntHC(i), 0.85, EntColour(gEntKind(i)), "")
             End If
         End If
     Next i
@@ -197,21 +213,21 @@ Private Sub Fill(ByVal sp As Shape, ByVal tagIdx As Long, ByVal pic As String, B
     On Error GoTo 0
 End Sub
 
-Private Function MazeTile(ByVal br As Long, ByVal bc As Long) As String
+' terrain fill for a block: a tile path, or (pic="") a flat colour
+Private Sub MazeCell(ByVal br As Long, ByVal bc As Long, ByRef pic As String, ByRef colour As Long)
+    pic = "": colour = 0
     If br < 1 Or br > MAP_BLOCK_ROWS Or bc < 1 Or bc > MAP_BLOCK_COLS Then
-        MazeTile = TILE_WALL: Exit Function
+        pic = mDir & TILE_WALL: Exit Sub                 ' void beyond the map
     End If
     Dim ch As String: ch = gBlock(br, bc)
-    If ch = T_WALL Or ch = T_DOOR Then
-        MazeTile = TILE_WALL
-    ElseIf ch = T_EXIT Then
-        MazeTile = TILE_EXIT
-    ElseIf IsGen(ch) Then
-        MazeTile = TILE_GEN
-    Else
-        MazeTile = TILE_FLOOR
-    End If
-End Function
+    Select Case ch
+        Case T_WALL:  pic = mDir & TILE_WALL
+        Case T_EXIT:  pic = mDir & TILE_EXIT
+        Case T_DOOR:  colour = RGB(140, 85, 45)          ' solid brown - readable vs the blue wall
+        Case Else
+            If IsGen(ch) Then pic = mDir & TILE_GEN Else pic = mDir & TILE_FLOOR
+    End Select
+End Sub
 
 Private Function InMap(ByVal br As Long, ByVal bc As Long) As Boolean
     InMap = (br >= 1 And br <= MAP_BLOCK_ROWS And bc >= 1 And bc <= MAP_BLOCK_COLS)
