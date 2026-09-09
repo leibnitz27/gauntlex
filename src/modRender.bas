@@ -215,7 +215,7 @@ Private Sub Poke(ByVal hr As Long, ByVal hc As Long, ByVal glyph As String)
     If vr >= 1 And vr <= VIEW_ROWS And vc >= 1 And vc <= VIEW_COLS Then mBuf(vr, vc) = glyph
 End Sub
 
-Private Sub DrawHud(ByVal ws As Worksheet, ByVal fps As Double)
+Public Sub DrawHud(ByVal ws As Worksheet, ByVal fps As Double)   ' also called by modShapes
     Dim h As Long: h = mHudCol
     ws.Cells(2, h).Value = CharName(gChar) & "   LVL " & gLevelNum
     ws.Cells(4, h).Value = "HEALTH   " & Format$(gHealth, "0000")

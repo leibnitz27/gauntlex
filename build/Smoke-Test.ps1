@@ -168,6 +168,8 @@ try {
     $excel.Run('DebugSetChar', [int]$CH_WARRIOR)      # restore default for the rest
 
     # ---- M5a: picture-Shape pool build (headless-safe: no .Fill.UserPicture) ----
+    $ok = $true; try { $excel.Run('DebugShapesCompile') } catch { $ok = $false }
+    Check "modShapes compiles" $ok $ok
     $excel.Run('GameInit'); $excel.Run('FitViewport'); $excel.Run('RenderInit'); $excel.Run('ShapesInit')
     $mz = 0; $act = 0
     foreach ($s in $ws.Shapes) { if ($s.Name -like 'mz_*') { $mz++ }; if ($s.Name -like 'act_*') { $act++ } }

@@ -29,6 +29,18 @@ Private mDir As String
 Private mReady As Boolean, mParked As Boolean
 Private mLastCamR As Long, mLastCamC As Long
 
+' smoke hook: force a full compile of this module (dead code is still
+' reference-checked) without running .Fill.UserPicture, which crashes a
+' hidden Excel instance.
+Public Sub DebugShapesCompile()
+    If True Then Exit Sub
+    ShapesFrame 0#
+    ParkShapes
+    DrawActors
+    PutActor 0, 0, 0, 0#, 0, ""
+    Fill Nothing, 0, "", 0
+End Sub
+
 Public Sub ShapesInit()
     Dim prevSU As Boolean: prevSU = Application.ScreenUpdating
     Application.ScreenUpdating = False
