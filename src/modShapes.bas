@@ -96,6 +96,10 @@ End Sub
 
 Public Sub ShapesFrame(ByVal fps As Double)
     If Not mReady Then ShapesInit
+    Dim prevSU As Boolean: prevSU = Application.ScreenUpdating
+    Application.ScreenUpdating = False          ' batch all shape ops into one repaint
+
+    If mParked Then BlankPlayfield              ' kill leftover menu text under the (part-transparent) tiles
     mParked = False
 
     Dim camBR As Double, camBC As Double
@@ -120,16 +124,23 @@ Public Sub ShapesFrame(ByVal fps As Double)
                 Fill mMz(i), i, mDir & MazeTile(wbr, wbc), 0
             Next c
         Next r
-    Else
-        ' still camera: Fill dedupes, so a cheap sweep catches gen/door changes
+    ElseIf gBlocksChanged Then
+        ' a generator died / a door opened - re-check every maze shape's tile
         Dim k As Long
         For k = 1 To MZN
             Fill mMz(k), k, mDir & MazeTile(mMzBR(k), mMzBC(k)), 0
         Next k
     End If
+    gBlocksChanged = False
 
     DrawActors
     DrawHud ThisWorkbook.Worksheets(SCREEN_SHEET), fps
+    Application.ScreenUpdating = prevSU
+End Sub
+
+Private Sub BlankPlayfield()
+    Dim ws As Worksheet: Set ws = ThisWorkbook.Worksheets(SCREEN_SHEET)
+    ws.Range(ws.Cells(1, 1), ws.Cells(VIEW_ROWS, VIEW_COLS)).ClearContents
 End Sub
 
 Private Sub DrawActors()

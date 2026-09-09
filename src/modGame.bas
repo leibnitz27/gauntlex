@@ -34,6 +34,7 @@ Public gPrjKind() As Long, gPrjHR() As Long, gPrjHC() As Long
 Public gPrjDR() As Long, gPrjDC() As Long, gPrjLife() As Long
 
 Public gLevelNum As Long
+Public gBlocksChanged As Boolean          ' a gBlock cell was edited this frame (shape renderer re-textures)
 
 Private mMoveAcc As Long, mDrainAcc As Long, mEntAcc As Long, mPrjAcc As Long, mShotAcc As Long
 Private mPotionAcc As Long, mEntTick As Long
@@ -90,6 +91,7 @@ Private Sub LoadCurrentLevel()
     mWarnFood = False: mWarnDie = False
     mThiefT = IIf(gThiefBR > 0, THIEF_DELAY_MS, -1)
     mDeathT = IIf(gDeathBR > 0, DEATH_DELAY_MS, -1)
+    gBlocksChanged = True            ' shape renderer: re-texture the whole maze
     CenterCamera
     Say "Enter level " & gLevelNum
 End Sub
@@ -191,7 +193,7 @@ Private Sub OpenDoorsAt(ByVal hr As Long, ByVal hc As Long)
     For i = 1 To n
         If InMap(br(i), bc(i)) Then
             If gBlock(br(i), bc(i)) = T_DOOR And gKeys > 0 Then
-                gKeys = gKeys - 1: gBlock(br(i), bc(i)) = T_FLOOR
+                gKeys = gKeys - 1: gBlock(br(i), bc(i)) = T_FLOOR: gBlocksChanged = True
             End If
         End If
     Next i
@@ -203,9 +205,9 @@ Private Sub PickupAt(ByVal hr As Long, ByVal hc As Long)
     For i = 1 To n
         If InMap(br(i), bc(i)) Then
             Select Case gBlock(br(i), bc(i))
-                Case T_FOOD:   gHealth = gHealth + FOOD_VALUE: gBlock(br(i), bc(i)) = T_FLOOR
-                Case T_KEY:    gKeys = gKeys + 1:              gBlock(br(i), bc(i)) = T_FLOOR
-                Case T_POTION: gPotions = gPotions + 1:        gBlock(br(i), bc(i)) = T_FLOOR
+                Case T_FOOD:   gHealth = gHealth + FOOD_VALUE: gBlock(br(i), bc(i)) = T_FLOOR: gBlocksChanged = True
+                Case T_KEY:    gKeys = gKeys + 1:              gBlock(br(i), bc(i)) = T_FLOOR: gBlocksChanged = True
+                Case T_POTION: gPotions = gPotions + 1:        gBlock(br(i), bc(i)) = T_FLOOR: gBlocksChanged = True
             End Select
         End If
     Next i
@@ -433,7 +435,7 @@ Private Sub HitGen(ByVal br As Long, ByVal bc As Long)
             gGenHP(i) = gGenHP(i) - CharHitPower(gChar)
             If gGenHP(i) <= 0 Then
                 gGenAlive(i) = False
-                gBlock(br, bc) = T_FLOOR
+                gBlock(br, bc) = T_FLOOR: gBlocksChanged = True
                 gScore = gScore + SCORE_GEN
             End If
             Exit Sub
@@ -540,7 +542,7 @@ Private Sub UsePotion()
     For i = 1 To gGenN
         If gGenAlive(i) And NearCamera(gGenBR(i) * 2 - 1, gGenBC(i) * 2 - 1, m) Then
             gGenAlive(i) = False
-            gBlock(gGenBR(i), gGenBC(i)) = T_FLOOR
+            gBlock(gGenBR(i), gGenBC(i)) = T_FLOOR: gBlocksChanged = True
             gScore = gScore + SCORE_GEN
         End If
     Next i
