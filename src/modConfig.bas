@@ -37,7 +37,12 @@ Public Const HUD_GAP_COLS     As Long = 1         ' blank columns between playfi
 Public gCellPts As Double                         ' current half-cell render size, points
 
 Public Const SCREEN_SHEET As String = "Screen"
-Public Const LEVEL_SHEET  As String = "L01"
+
+' ---- Progression ----
+Public Const LEVEL_CLEAR_BONUS As Long = 250      ' health topped up on entering the next level
+Public Const WARN_FOOD_AT      As Long = 700      ' "needs food badly"
+Public Const WARN_DIE_AT       As Long = 300      ' "is about to die"
+Public Const WARN_REARM_AT     As Long = 950      ' health above this re-arms the warnings
 
 ' ---- Timing ----
 Public Const TARGET_FPS  As Long = 25
@@ -47,7 +52,7 @@ Public Const ENT_TICK_MS As Long = 65            ' base monster tick; kinds move
 Public Const DRAIN_MS    As Long = 1100           ' health lost per tick just for being alive
 Public Const SHOT_MS     As Long = 200            ' player fire cooldown
 Public Const PRJ_MS      As Long = 45            ' projectile step interval
-Public Const GEN_SPAWN_MS As Long = 2600          ' generator spawn interval (while on screen)
+Public Const GEN_SPAWN_MS As Long = 900           ' generator spawn interval (while on screen)
 Public Const DEMON_SHOOT_MS As Long = 1300
 Public Const SORC_FLICKER_MS As Long = 650        ' sorcerer visible<->invisible toggle
 Public Const LOBBER_THROW_MS As Long = 1500
@@ -102,7 +107,7 @@ Public Const DEMON_SHOT_LIFE As Long = 60
 Public Const DEATH_HP        As Long = 120        ' hits to kill Death the hard way
 Public Const DEATH_DRAIN     As Long = 7          ' per entity tick while Death overlaps you
 Public Const GEN_HP          As Long = 3
-Public Const GEN_KIND_CAP    As Long = 5          ' a generator idles if this many of its kind are already alive
+Public Const GEN_KIND_CAP    As Long = 12         ' a generator idles if this many of its kind are already alive
 Public Const SCORE_GRUNT  As Long = 10
 Public Const SCORE_GHOST  As Long = 12
 Public Const SCORE_DEMON  As Long = 40

@@ -198,9 +198,19 @@ Generators spawn an actor into a free adjacent cell on a per-generator timer.
       by armour. `modRender` gains `RenderTitle` / `RenderSelect` (centred
       text into the viewport); HUD shows the chosen hero. Verified by
       `build\Smoke-Test.ps1` (34 checks).
-- [ ] **M4b — levels & sound.** Level chaining (`L02`, `L03`…), level-clear →
-      next level (score/lives/potions carry), a victory screen, and sound
-      (async `Application.Speech` call-outs).
+- [x] **M4b — levels & sound.** `modGame` splits `GameInit` (new run, level 1)
+      from `LoadCurrentLevel` (per-level: entities/generators/projectiles/keys
+      reset, health & score & lives & potions & hero carry). `AdvanceLevel`
+      loads `L{nn+1}` if the sheet exists (+`LEVEL_CLEAR_BONUS` health, capped)
+      else the engine shows **VICTORY**. Three hand-built levels
+      (`levels/L01-03.txt`). `modSound`: `Say` fires async `Application.Speech`
+      call-outs (level enter, "needs food badly" / "is about to die" on
+      health-threshold crossings, "X has died", "Game over", "Level complete",
+      "You have escaped") - guarded, no-op if speech is unavailable.
+      `build\Check-Level.ps1` now enforces exact 32x32 and its flood-fill
+      actually works (`return ,$seen` - a bare `return` was unrolling the 2D
+      array so every cell read as reachable). Verified by
+      `build\Smoke-Test.ps1` (40 checks).
 
 - [ ] **M5 — fidelity pass.** Authentic level data, AI/timing tuned to the
       original, 2-player co-op, and the **picture-Shape renderer** (decided by

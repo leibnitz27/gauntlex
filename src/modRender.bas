@@ -137,6 +137,17 @@ Public Sub RenderTitle()
     BlankHud
 End Sub
 
+Public Sub RenderVictory()
+    ClearBuf
+    Line8 5, "YOU ESCAPED"
+    Line8 7, "THE DUNGEON"
+    Line8 11, CharName(gChar) & " triumphs"
+    Line8 14, "SCORE " & Format$(gScore, "000000")
+    Line8 18, "PRESS  SPACE"
+    mView.Value = mBuf
+    BlankHud
+End Sub
+
 Public Sub RenderSelect(ByVal cursor As Long)
     ClearBuf
     Line8 2, "CHOOSE YOUR HERO"
@@ -199,7 +210,7 @@ End Sub
 
 Private Sub DrawHud(ByVal ws As Worksheet, ByVal fps As Double)
     Dim h As Long: h = mHudCol
-    ws.Cells(2, h).Value = CharName(gChar)
+    ws.Cells(2, h).Value = CharName(gChar) & "   LVL " & gLevelNum
     ws.Cells(4, h).Value = "HEALTH   " & Format$(gHealth, "0000")
     ws.Cells(5, h).Value = "SCORE    " & Format$(gScore, "000000")
     ws.Cells(6, h).Value = "LIVES    " & gLives

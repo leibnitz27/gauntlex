@@ -28,12 +28,19 @@ function Flood($g, $sr, $sc, $throughDoors) {
             $q.Enqueue(@($r, $c))
         }
     }
-    $seen
+    , $seen                      # unary comma: keep the 2D array from unrolling on return
 }
 
 Get-ChildItem (Join-Path $Root 'levels') -Filter '*.txt' | ForEach-Object {
     $name = $_.BaseName
     $lines = Get-Content -LiteralPath $_.FullName
+    Write-Host "== $name =="
+    if ($lines.Count -ne $H) { Write-Host "  FAIL $($lines.Count) rows, expected $H"; $script:fail++ }
+    for ($r = 0; $r -lt [math]::Min($lines.Count, $H); $r++) {
+        if (([string]$lines[$r]).Length -ne $W) {
+            Write-Host "  FAIL row $($r+1) is $(([string]$lines[$r]).Length) chars, expected $W"; $script:fail++
+        }
+    }
     $g = @(); for ($r = 0; $r -lt $H; $r++) {
         $ln = if ($r -lt $lines.Count) { [string]$lines[$r] } else { '' }
         $ln = $ln.PadRight($W).Substring(0, $W)
@@ -47,7 +54,6 @@ Get-ChildItem (Join-Path $Root 'levels') -Filter '*.txt' | ForEach-Object {
         if ('KDX+PGOEZL'.Contains($ch)) { $cells[$ch] += , @($r, $c) }
     } }
 
-    Write-Host "== $name =="
     if (-not $spawn) { Write-Host "  FAIL no spawn (S)"; $script:fail++; return }
 
     $reachNoDoor = Flood $g $spawn[0] $spawn[1] $false
