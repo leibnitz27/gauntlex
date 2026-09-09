@@ -152,36 +152,83 @@ End Sub
 
 Private Sub DrawActors(ByVal topB As Long, ByVal leftB As Long)
     Dim n As Long, i As Long, br As Long, bc As Long
+    Dim frame As Long: frame = (timeGetTime() \ ANIM_MS) Mod 3
 
-    ' floor items - small coloured markers (real sprites in M5b)
+    ' floor items
     For br = topB To topB + MZR
         For bc = leftB To leftB + MZC
             If InMap(br, bc) Then
                 Select Case gBlock(br, bc)
-                    Case T_KEY:    n = PutActor(n, br * 2 - 1, bc * 2 - 1, 0.55, RGB(245, 225, 40), "")
-                    Case T_FOOD:   n = PutActor(n, br * 2 - 1, bc * 2 - 1, 0.55, RGB(215, 70, 60), "")
-                    Case T_POTION: n = PutActor(n, br * 2 - 1, bc * 2 - 1, 0.55, RGB(70, 130, 245), "")
+                    Case T_KEY:    n = PutActor(n, br * 2 - 1, bc * 2 - 1, 0.7, 0, SprFile(SPR_ITEM_KEY))
+                    Case T_FOOD:   n = PutActor(n, br * 2 - 1, bc * 2 - 1, 0.8, 0, SprFile(SPR_ITEM_MEAT))
+                    Case T_POTION: n = PutActor(n, br * 2 - 1, bc * 2 - 1, 0.8, 0, SprFile(SPR_ITEM_POT))
                 End Select
             End If
         Next bc
     Next br
 
+    ' projectiles
     For i = 1 To gPrjN
-        If gPrjKind(i) <> 0 Then n = PutActor(n, gPrjHR(i), gPrjHC(i), 0.5, PrjColour(gPrjKind(i)), "")
+        If gPrjKind(i) <> 0 Then
+            Dim pspr As Long
+            pspr = IIf(gPrjKind(i) = P_PLAYER, SPR_ARROW, SPR_FIREBALL) + DirIndex(gPrjDR(i), gPrjDC(i))
+            n = PutActor(n, gPrjHR(i), gPrjHC(i), 0.8, PrjColour(gPrjKind(i)), SprFile(pspr))
+        End If
     Next i
+
+    ' monsters - per-kind sprite block + frame*8 + facing
     For i = 1 To gEntN
         If gEntKind(i) <> K_NONE Then
             If Not (gEntKind(i) = K_SORC) Or SorcVisible(i) Then
-                n = PutActor(n, gEntHR(i), gEntHC(i), 0.85, EntColour(gEntKind(i)), "")
+                Dim mb As Long: mb = MonBase(gEntKind(i))
+                n = PutActor(n, gEntHR(i), gEntHC(i), 1#, EntColour(gEntKind(i)), _
+                             SprFile(mb + frame * 8 + gEntDir(i)))
             End If
         End If
     Next i
-    n = PutActor(n, gPlHR, gPlHC, 1#, 0, mDir & TILE_ELF)
+
+    ' player - chosen hero, walk frame (mid-stride when idle) + facing
+    Dim pf As Long
+    pf = IIf(gInUp Or gInDown Or gInLeft Or gInRight, frame, 1)
+    n = PutActor(n, gPlHR, gPlHC, 1#, 0, _
+                 SprFile(SPR_HERO_BASE + gChar * SPR_HERO_STRIDE + pf * 8 + DirIndex(gFaceDR, gFaceDC)))
 
     For i = n + 1 To ACT_POOL
         mAct(i).Visible = msoFalse
     Next i
 End Sub
+
+Private Function MonBase(ByVal k As Long) As Long
+    Select Case k
+        Case K_GHOST:  MonBase = SPR_GHOST
+        Case K_GRUNT:  MonBase = SPR_GRUNT
+        Case K_DEMON:  MonBase = SPR_IMP
+        Case K_SORC:   MonBase = SPR_BADWIZ
+        Case K_LOBBER: MonBase = SPR_BLOB
+        Case K_THIEF:  MonBase = SPR_HEAD
+        Case K_DEATH:  MonBase = SPR_DEATH
+        Case Else:     MonBase = SPR_GRUNT
+    End Select
+End Function
+
+' stream index -> tile path ("" if the tile wasn't sliced). Cached: the Dir$
+' check and the string build happen once per index for the session.
+Private mSprCache() As String
+
+Private Function SprFile(ByVal idx As Long) As String
+    If idx < 0 Or idx > 703 Then Exit Function
+    If (Not Not mSprCache) = 0 Then
+        ReDim mSprCache(0 To 703)
+        Dim j As Long
+        For j = 0 To 703: mSprCache(j) = vbNullChar: Next j    ' sentinel = not yet checked
+    End If
+    If mSprCache(idx) = vbNullChar Then
+        Dim p As String
+        p = mDir & "r" & Format$(idx \ 44, "00") & "_c" & Format$(idx Mod 44, "00") & ".png"
+        mSprCache(idx) = IIf(Dir$(p) <> "", p, "")
+    End If
+    SprFile = mSprCache(idx)
+End Function
 
 ' place actor slot n+1 at half-cell (hr,hc); sizeBlk in blocks; pic "" => flat colour
 Private Function PutActor(ByVal n As Long, ByVal hr As Long, ByVal hc As Long, _
@@ -225,7 +272,12 @@ Private Sub MazeCell(ByVal br As Long, ByVal bc As Long, ByRef pic As String, By
         Case T_EXIT:  pic = mDir & TILE_EXIT
         Case T_DOOR:  colour = RGB(140, 85, 45)          ' solid brown - readable vs the blue wall
         Case Else
-            If IsGen(ch) Then pic = mDir & TILE_GEN Else pic = mDir & TILE_FLOOR
+            If IsGen(ch) Then
+                pic = SprFile(SPR_GENERATOR)
+                If pic = "" Then colour = RGB(150, 40, 40)
+            Else
+                pic = mDir & TILE_FLOOR
+            End If
     End Select
 End Sub
 

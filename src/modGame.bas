@@ -24,6 +24,7 @@ Public gHealth As Long, gScore As Long, gKeys As Long, gPotions As Long, gLives 
 ' ---- entities ----
 Public gEntN As Long
 Public gEntKind() As Long, gEntHR() As Long, gEntHC() As Long, gEntHP() As Long, gEntT() As Long
+Public gEntDir() As Long                  ' 0..7 facing (N NE E SE S SW W NW) - for the sprite renderer
 
 ' ---- generators (index matches modLevel gGen*; 1..gGenN) ----
 Public gGenAlive() As Boolean, gGenHP() As Long, gGenT() As Long
@@ -72,7 +73,7 @@ Private Sub LoadCurrentLevel()
     gKeys = 0
 
     ReDim gEntKind(1 To MAX_ENT): ReDim gEntHR(1 To MAX_ENT): ReDim gEntHC(1 To MAX_ENT)
-    ReDim gEntHP(1 To MAX_ENT): ReDim gEntT(1 To MAX_ENT)
+    ReDim gEntHP(1 To MAX_ENT): ReDim gEntT(1 To MAX_ENT): ReDim gEntDir(1 To MAX_ENT)
     gEntN = 0
 
     ReDim gGenAlive(1 To MAX_GEN): ReDim gGenHP(1 To MAX_GEN): ReDim gGenT(1 To MAX_GEN)
@@ -331,6 +332,7 @@ Private Sub MoveToward(ByVal i As Long, ByVal tr As Long, ByVal tc As Long)
     Dim dr As Long, dc As Long
     dr = Sgn(tr - gEntHR(i)): dc = Sgn(tc - gEntHC(i))
     If dr = 0 And dc = 0 Then Exit Sub
+    gEntDir(i) = DirIndex(dr, dc)
     If FootprintClear(gEntHR(i) + dr, gEntHC(i) + dc) Then
         gEntHR(i) = gEntHR(i) + dr: gEntHC(i) = gEntHC(i) + dc
     ElseIf dr <> 0 And FootprintClear(gEntHR(i) + dr, gEntHC(i)) Then
@@ -555,6 +557,12 @@ End Sub
 
 Private Function InMap(ByVal br As Long, ByVal bc As Long) As Boolean
     InMap = (br >= 1 And br <= MAP_BLOCK_ROWS And bc >= 1 And bc <= MAP_BLOCK_COLS)
+End Function
+
+' (dr,dc) in {-1,0,1} -> facing 0..7 = N NE E SE S SW W NW  (0,0 -> S)
+Public Function DirIndex(ByVal dr As Long, ByVal dc As Long) As Long
+    Dim t As Variant: t = Array(7, 0, 1, 6, 4, 2, 5, 4, 3)
+    DirIndex = t((dr + 1) * 3 + (dc + 1))
 End Function
 
 Private Function Overlap(ByVal ar As Long, ByVal ac As Long, ByVal br As Long, ByVal bc As Long) As Boolean

@@ -40,10 +40,28 @@ Public gCellPts As Double                         ' current half-cell render siz
 Public Const RENDER_SHAPES_DEFAULT As Boolean = True   ' picture-Shape renderer (M5); False = glyphs
 Public gRenderShapes As Boolean
 Public Const TILE_WALL  As String = "r12_c28.png"      ' blue solid-wall block
-Public Const TILE_GEN   As String = "r12_c29.png"      ' red block for generators
 Public Const TILE_FLOOR As String = "r13_c11.png"
 Public Const TILE_EXIT  As String = "r12_c34.png"
-Public Const TILE_ELF   As String = "r12_c00.png"      ' player (only confirmed hero frame so far)
+
+' ---- Sprite atlas: linear stream, index i -> r{i\44}_c{i mod 44}.png ----
+'  walk blocks are frame-major: col_in_block = frame*8 + dir
+'  dir order: N NE E SE S SW W NW  (= 0..7)
+Public Const SPR_HERO_BASE As Long = 396      ' Warrior; +37 per hero (Valk, Wiz, Elf)
+Public Const SPR_HERO_STRIDE As Long = 37     ' 24 walk + 8 weapon + 5 dissolve
+Public Const SPR_GHOST     As Long = 0
+Public Const SPR_GRUNT     As Long = 24
+Public Const SPR_HEAD      As Long = 48       ' "floating head" -> thief
+Public Const SPR_IMP       As Long = 72       ' -> demon
+Public Const SPR_BADWIZ    As Long = 96       ' -> sorcerer
+Public Const SPR_DEATH     As Long = 120
+Public Const SPR_BLOB      As Long = 144      ' -> lobber
+Public Const SPR_GENERATOR As Long = 224      ' r05 c04 (single tile)
+Public Const SPR_FIREBALL  As Long = 323      ' r07 c15, +dir  (demon / enemy shot)
+Public Const SPR_ARROW     As Long = 531      ' r12 c03, +dir  (Elf weapon block)
+Public Const SPR_ITEM_MEAT As Long = 282
+Public Const SPR_ITEM_KEY  As Long = 283
+Public Const SPR_ITEM_POT  As Long = 289
+Public Const ANIM_MS       As Long = 130      ' walk-frame interval
 
 Public Const SCREEN_SHEET As String = "Screen"
 

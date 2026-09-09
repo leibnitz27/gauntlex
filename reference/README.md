@@ -57,7 +57,44 @@ confirmed tile-by-tile against `tilesheet.png` (`build\Make-TileSheet.ps1`).
 | `r13 c11-c24` | brown **floor** variants (visual noise) |
 | `r13 c27-c43` | green / blue-tinted floor variants |
 
-### Not yet mapped (needed for wall autotiling - M5b)
+### Sprite stream (confirmed with the user)
+
+The atlas is a **linear stream**: stream index `i` -> tile `r{i\44}_c{i mod 44}`
+(only non-empty tiles were sliced). Walk blocks are **frame-major**:
+`col_in_block = frame*8 + dir`, `dir` = {N,NE,E,SE,S,SW,W,NW} = 0..7.
+
+Heroes - contiguous from r09 c00, each a 37-tile block
+(24 walk [frame*8+dir, 3 frames] + 8 thrown-weapon [1/dir] + 5 dissolve-to-exit):
+
+| hero | stream start | = tile |
+|---|---|---|
+| Warrior (barbarian) | 396 | r09 c00 |
+| Valkyrie | 433 | r09 c37 |
+| Wizard | 470 | r10 c30 |
+| Elf (archer) | 507 | r11 c23 (arrow at 531 = r12 c03, dissolve at 539 = r12 c11) |
+
+Monsters - contiguous from r00 c00, each 24-tile walk (frame*8+dir, 3 frames):
+
+| block | start | our kind |
+|---|---|---|
+| ghost | 0 | K_GHOST |
+| grunt | 24 | K_GRUNT |
+| floating head | 48 | K_THIEF (guess) |
+| imp | 72 | K_DEMON (guess) |
+| bad wizard | 96 | K_SORC (guess) |
+| death | 120 | K_DEATH |
+| blob | 144 | K_LOBBER (guess) |
+| pulse (8) | 168 | spawn/other fx |
+| blue grunt | 176 | (unused) |
+| swordman | 200 | (unused) |
+
+Effects: generator = **224** (r05 c04). demon/enemy fireball 8-dir = **323**
+(r07 c15, +dir). Elf arrow 8-dir = **531** (r12 c03, +dir). r05 c05-c19 -
+three unlabelled fx sets (225-230, 231-234, 235-239), tentatively lobber
+rock / potion blast / death puff, confirm on playtest.
+Items: meat = 282 (r06 c18), key = 283 (r06 c19), potion = 289 (r06 c25).
+
+### Not yet mapped (needed for wall autotiling - M5c)
 
 - **Thin blue wall autotile set** - `r12 c36-c43` + `r13 c00-c10` (~19 tiles;
   user says 15 orientation pieces + 2 diagonals + 1 blob). Orientation->tile
