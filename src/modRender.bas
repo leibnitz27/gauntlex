@@ -74,7 +74,8 @@ Public Sub RenderInit()
     ws.Cells(2, mHudCol).Font.Bold = True
 
     Application.ScreenUpdating = True
-    If gRenderShapes Then ShapesInit          ' picture-Shape pools on top of the glyph grid
+    ' shape pools are built lazily on the first PLAY frame (ShapesFrame), not
+    ' here - creating 380 shapes up front stalls the menus
 End Sub
 
 Private Function FontForCell(ByVal pts As Double) As Double

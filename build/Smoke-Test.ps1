@@ -167,12 +167,11 @@ try {
 
     $excel.Run('DebugSetChar', [int]$CH_WARRIOR)      # restore default for the rest
 
-    # ---- M5a: picture-Shape renderer pools build (headless: init only, no .Fill.UserPicture) ----
-    $excel.Run('GameInit'); $excel.Run('DebugSetRenderShapes', $true); $excel.Run('RenderInit')
+    # ---- M5a: picture-Shape pool build (headless-safe: no .Fill.UserPicture) ----
+    $excel.Run('GameInit'); $excel.Run('FitViewport'); $excel.Run('RenderInit'); $excel.Run('ShapesInit')
     $mz = 0; $act = 0
     foreach ($s in $ws.Shapes) { if ($s.Name -like 'mz_*') { $mz++ }; if ($s.Name -like 'act_*') { $act++ } }
-    Check "shape pools built (240 maze / 140 actor)" ($mz -eq 240 -and $act -eq 140) "mz $mz act $act"
-    $excel.Run('DebugSetRenderShapes', $false); $excel.Run('RenderInit')
+    Check "shape pools built (240 maze / 80 actor)" ($mz -eq 240 -and $act -eq 80) "mz $mz act $act"
 
     # ---- M4b: level chaining, victory ----
     $excel.Run('GameInit')

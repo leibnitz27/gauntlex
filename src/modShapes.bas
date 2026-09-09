@@ -18,7 +18,7 @@ Option Explicit
 Private Const MZC As Long = VIEW_BLOCK_COLS + 2
 Private Const MZR As Long = VIEW_BLOCK_ROWS + 2
 Private Const MZN As Long = MZR * MZC
-Private Const ACT_POOL As Long = 140
+Private Const ACT_POOL As Long = 80
 
 Private mMz() As Shape
 Private mMzBR() As Long, mMzBC() As Long          ' world block each maze shape shows now
@@ -30,6 +30,9 @@ Private mReady As Boolean, mParked As Boolean
 Private mLastCamR As Long, mLastCamC As Long
 
 Public Sub ShapesInit()
+    Dim prevSU As Boolean: prevSU = Application.ScreenUpdating
+    Application.ScreenUpdating = False
+
     Dim ws As Worksheet: Set ws = ThisWorkbook.Worksheets(SCREEN_SHEET)
     ws.Activate
     ws.Cells.Interior.Color = CLR_BG
@@ -66,6 +69,7 @@ Public Sub ShapesInit()
     ReDim mTag(1 To MZN + ACT_POOL)
     mLastCamR = -30000: mLastCamC = -30000
     mReady = True
+    Application.ScreenUpdating = prevSU
 End Sub
 
 ' move the pools off-screen while a menu / result screen is up
