@@ -26,7 +26,7 @@ Private mAct() As Shape
 Private mTag() As String                          ' current fill "pic|colour" per shape (1..MZN maze, MZN+1..MZN+ACT_POOL actors)
 Private mBlockPts As Double
 Private mDir As String
-Private mReady As Boolean, mParked As Boolean
+Private mReady As Boolean, mParked As Boolean, mNeedBlank As Boolean
 Private mLastCamR As Long, mLastCamC As Long
 
 ' smoke hook: force a full compile of this module (dead code is still
@@ -81,6 +81,7 @@ Public Sub ShapesInit()
     ReDim mTag(1 To MZN + ACT_POOL)
     mLastCamR = -30000: mLastCamC = -30000
     mReady = True
+    mNeedBlank = True                 ' clear leftover menu text from the viewport cells
     Application.ScreenUpdating = prevSU
 End Sub
 
@@ -91,7 +92,8 @@ Public Sub ParkShapes()
     For i = 1 To MZN: mMz(i).Left = -9000: Next i
     For i = 1 To ACT_POOL: mAct(i).Visible = msoFalse: Next i
     mParked = True
-    mLastCamR = -30000: mLastCamC = -30000       ' force a full reposition on resume
+    mNeedBlank = True                             ' menu text was just re-written to the cells
+    mLastCamR = -30000: mLastCamC = -30000        ' force a full reposition on resume
 End Sub
 
 Public Sub ShapesFrame(ByVal fps As Double)
@@ -99,7 +101,7 @@ Public Sub ShapesFrame(ByVal fps As Double)
     Dim prevSU As Boolean: prevSU = Application.ScreenUpdating
     Application.ScreenUpdating = False          ' batch all shape ops into one repaint
 
-    If mParked Then BlankPlayfield              ' kill leftover menu text under the (part-transparent) tiles
+    If mNeedBlank Then BlankPlayfield: mNeedBlank = False   ' kill menu text under the part-transparent tiles
     mParked = False
 
     Dim camBR As Double, camBC As Double
