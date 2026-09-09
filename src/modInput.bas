@@ -12,6 +12,7 @@ Public gInLeft   As Boolean
 Public gInRight  As Boolean
 Public gInFire   As Boolean
 Public gInPotion As Boolean
+Public gInRender As Boolean
 Public gInQuit   As Boolean
 
 Public Sub PollInput()
@@ -21,5 +22,6 @@ Public Sub PollInput()
     gInRight = KeyDown(VK_RIGHT)
     gInFire = KeyDown(VK_SPACE)
     gInPotion = KeyDown(VK_C)
+    gInRender = KeyDown(VK_G)
     gInQuit = KeyDown(VK_ESCAPE)
 End Sub

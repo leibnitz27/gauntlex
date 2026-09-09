@@ -612,6 +612,7 @@ End Sub
 Public Sub DebugSetKeys(ByVal k As Long): gKeys = k: End Sub
 Public Sub DebugSetPotions(ByVal p As Long): gPotions = p: End Sub
 Public Sub DebugSetChar(ByVal c As Long): gChar = c: End Sub
+Public Sub DebugSetRenderShapes(ByVal enabled As Boolean): gRenderShapes = enabled: End Sub
 Public Sub DebugNextLevel()              ' mirrors the engine's post-WON step
     If AdvanceLevel() Then gState = "PLAY" Else gState = "VICTORY"
 End Sub

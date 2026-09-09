@@ -74,6 +74,7 @@ Public Sub RenderInit()
     ws.Cells(2, mHudCol).Font.Bold = True
 
     Application.ScreenUpdating = True
+    If gRenderShapes Then ShapesInit          ' picture-Shape pools on top of the glyph grid
 End Sub
 
 Private Function FontForCell(ByVal pts As Double) As Double
@@ -95,6 +96,8 @@ Private Sub SquareColumns(ByVal ws As Worksheet)
 End Sub
 
 Public Sub RenderFrame(ByVal fps As Double)
+    If gRenderShapes Then ShapesFrame fps: Exit Sub
+
     Dim r As Long, c As Long
     For r = 1 To VIEW_ROWS
         For c = 1 To VIEW_COLS
@@ -127,6 +130,7 @@ End Sub
 ' ---- title / character select (M4a) --------------------
 
 Public Sub RenderTitle()
+    If gRenderShapes Then ParkShapes
     ClearBuf
     Line8 4, "G A U N T L E X"
     Line8 8, "the spreadsheet dungeon"
@@ -138,6 +142,7 @@ Public Sub RenderTitle()
 End Sub
 
 Public Sub RenderVictory()
+    If gRenderShapes Then ParkShapes
     ClearBuf
     Line8 5, "YOU ESCAPED"
     Line8 7, "THE DUNGEON"
@@ -149,6 +154,7 @@ Public Sub RenderVictory()
 End Sub
 
 Public Sub RenderSelect(ByVal cursor As Long)
+    If gRenderShapes Then ParkShapes
     ClearBuf
     Line8 2, "CHOOSE YOUR HERO"
     Dim c As Long, s As String

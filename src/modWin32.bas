@@ -23,6 +23,7 @@ Public Const VK_DOWN   As Long = &H28
 Public Const VK_ESCAPE As Long = &H1B
 Public Const VK_SPACE  As Long = &H20
 Public Const VK_C      As Long = &H43
+Public Const VK_G      As Long = &H47      ' toggle glyph / picture-Shape renderer
 
 ' True while the physical key is down, regardless of which window has focus.
 Public Function KeyDown(ByVal vKey As Long) As Boolean

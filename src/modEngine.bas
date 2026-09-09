@@ -27,6 +27,7 @@ Public Sub StartGauntlex()
     On Error GoTo Cleanup
     SetPlayButton False
     SoundInit
+    gRenderShapes = RENDER_SHAPES_DEFAULT
 
     FitViewport         ' size the view to the Excel window (capped at the map)
     RenderInit
@@ -35,7 +36,7 @@ Public Sub StartGauntlex()
     Dim tPrev As Long, tNow As Long, dt As Long, spent As Long
     Dim frames As Long, fpsClock As Long, fps As Double
     Dim resultAt As Long, cursor As Long
-    Dim firePrev As Boolean, prevPrev As Boolean, nextPrev As Boolean
+    Dim firePrev As Boolean, prevPrev As Boolean, nextPrev As Boolean, renderPrev As Boolean
     Dim fireEdge As Boolean, prevEdge As Boolean, nextEdge As Boolean
     tPrev = timeGetTime()
     fpsClock = tPrev
@@ -55,6 +56,7 @@ Public Sub StartGauntlex()
         fireEdge = gInFire And Not firePrev: firePrev = gInFire
         prevEdge = prevHeld And Not prevPrev: prevPrev = prevHeld
         nextEdge = nextHeld And Not nextPrev: nextPrev = nextHeld
+        Dim renderEdge As Boolean: renderEdge = gInRender And Not renderPrev: renderPrev = gInRender
 
         Select Case gState
             Case "TITLE"
@@ -73,6 +75,10 @@ Public Sub StartGauntlex()
                 End If
 
             Case "PLAY"
+                If renderEdge Then                        ' 'G' toggles glyph / picture-Shape
+                    gRenderShapes = Not gRenderShapes
+                    RenderInit
+                End If
                 GameUpdate dt
                 RenderFrame fps
 

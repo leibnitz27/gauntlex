@@ -36,6 +36,15 @@ Public Const HUD_GAP_COLS     As Long = 1         ' blank columns between playfi
 
 Public gCellPts As Double                         ' current half-cell render size, points
 
+' ---- Renderer ----
+Public Const RENDER_SHAPES_DEFAULT As Boolean = True   ' picture-Shape renderer (M5); False = glyphs
+Public gRenderShapes As Boolean
+Public Const TILE_WALL  As String = "r12_c28.png"      ' blue solid-wall block
+Public Const TILE_GEN   As String = "r12_c29.png"      ' red block for generators
+Public Const TILE_FLOOR As String = "r13_c11.png"
+Public Const TILE_EXIT  As String = "r12_c34.png"
+Public Const TILE_ELF   As String = "r12_c00.png"      ' player (only confirmed hero frame so far)
+
 Public Const SCREEN_SHEET As String = "Screen"
 
 ' ---- Progression ----

@@ -24,7 +24,8 @@ origin (3, 5).
 → alpha, non-empty cells only — 592 tiles). `genesis-tiles-contact.png` is a
 3× labelled contact sheet.
 
-Row contents (each row is an 8-direction walk cycle unless noted):
+Row contents (each row is an 8-direction walk cycle unless noted). Rough until
+confirmed tile-by-tile against `tilesheet.png` (`build\Make-TileSheet.ps1`).
 
 | rows | contents |
 |---|---|
@@ -40,9 +41,29 @@ Row contents (each row is an 8-direction walk cycle unless noted):
 | 09 | Elf walk, then thrown daggers/shuriken |
 | 10 | blonde Warrior walk, then thrown swords/crosses |
 | 11 | Warrior frames, flame frames, then green goblins (lobbers) |
-| 12 | goblins + thrown rocks, then **wall tiles** (brown / dark / orange / red / blue brick, X-marked exit blocks) |
-| 13 | **floor + wall tiles** (blue brick variants: plain / cracked / edged, green tiled) |
+| 12 | **Elf** (c00-15: c00-02 frames, c03-10 arrow x8 dirs, c11-15 portal-shrink), then walls |
+| 13 | thin blue wall pieces (c00-10), then floor variants |
 
-**Status:** asset library ready. The renderer currently draws characters in
-Excel cells; wiring these in needs colour-per-cell or image-Shape rendering —
-milestone M5.
+### Tile map (confirmed with the user, in progress)
+
+| tile(s) | is |
+|---|---|
+| `r12 c00-c02` | Elf hero frames |
+| `r12 c03-c10` | Elf's arrow (fired), 8 directions |
+| `r12 c11-c15` | Elf shrinking into a portal (teleport) |
+| `r12 c23`/`c24`/`c25`/`c26`/`c28`/`c29`/`c30`/`c31` | **solid wall block**, one per level palette (brown / orange / yellow / black / blue / red / green / white). Same 3x3-bar hash shape, no orientation. |
+| `r13 c25`/`c26` | green solid wall block (as above) |
+| `r12 c34`, `r12 c35` | **EXIT** block |
+| `r13 c11-c24` | brown **floor** variants (visual noise) |
+| `r13 c27-c43` | green / blue-tinted floor variants |
+
+### Not yet mapped (needed for wall autotiling - M5b)
+
+- **Thin blue wall autotile set** - `r12 c36-c43` + `r13 c00-c10` (~19 tiles;
+  user says 15 orientation pieces + 2 diagonals + 1 blob). Orientation->tile
+  mapping unknown.
+- **Thick brown "packing slab" wall autotile set** - `r12 c16-c22`, `c27`,
+  `c32`, `c33` (~10 visible; user says 15). Orientation->tile mapping unknown.
+
+**Status:** M5a uses the solid wall block + floor + EXIT (confirmed).
+Autotiling and real actor sprites/facing are M5b, pending the tile map.

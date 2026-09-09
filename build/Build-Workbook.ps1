@@ -25,6 +25,11 @@ $MAP_COLS  = 32
 
 & (Join-Path $PSScriptRoot 'Check-Level.ps1')   # fail the build on an unbeatable level
 
+# the picture-Shape renderer reads reference\genesis-tiles\*.png at runtime
+if (-not (Test-Path (Join-Path $Root 'reference\genesis-tiles\r13_c11.png'))) {
+    & (Join-Path $Root 'reference\slice-tiles.ps1')
+}
+
 $excel = New-Object -ComObject Excel.Application
 $excel.Visible = $false
 $excel.DisplayAlerts = $false
