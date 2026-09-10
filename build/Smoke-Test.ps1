@@ -167,6 +167,14 @@ try {
 
     $excel.Run('DebugSetChar', [int]$CH_WARRIOR)      # restore default for the rest
 
+    # ---- M5a: picture-Shape pool build (headless-safe: no .Fill.UserPicture) ----
+    $ok = $true; try { $excel.Run('DebugShapesCompile') } catch { $ok = $false }
+    Check "modShapes compiles" $ok $ok
+    $excel.Run('GameInit'); $excel.Run('FitViewport'); $excel.Run('RenderInit'); $excel.Run('ShapesInit')
+    $mz = 0; $act = 0
+    foreach ($s in $ws.Shapes) { if ($s.Name -like 'mz_*') { $mz++ }; if ($s.Name -like 'act_*') { $act++ } }
+    Check "shape pools built (240 maze / 80 actor)" ($mz -eq 240 -and $act -eq 80) "mz $mz act $act"
+
     # ---- M4b: level chaining, victory ----
     $excel.Run('GameInit')
     Check "starts on level 1"        ((State).lvl -eq 1) (State).lvl

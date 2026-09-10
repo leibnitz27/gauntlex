@@ -74,6 +74,8 @@ Public Sub RenderInit()
     ws.Cells(2, mHudCol).Font.Bold = True
 
     Application.ScreenUpdating = True
+    ' shape pools are built lazily on the first PLAY frame (ShapesFrame), not
+    ' here - creating 380 shapes up front stalls the menus
 End Sub
 
 Private Function FontForCell(ByVal pts As Double) As Double
@@ -91,10 +93,14 @@ Private Sub SquareColumns(ByVal ws As Worksheet)
         ws.Columns(1).ColumnWidth = mid
         If ws.Columns(1).Width > gCellPts Then hi = mid Else lo = mid
     Next i
-    ws.Range(ws.Columns(1), ws.Columns(VIEW_COLS)).ColumnWidth = ws.Columns(1).ColumnWidth
+    ' include the HUD gap columns so the gutter is a known width and the shape
+    ' maze's scroll-pad overhang lands in it, not on the HUD text
+    ws.Range(ws.Columns(1), ws.Columns(VIEW_COLS + HUD_GAP_COLS)).ColumnWidth = ws.Columns(1).ColumnWidth
 End Sub
 
 Public Sub RenderFrame(ByVal fps As Double)
+    If gRenderShapes Then ShapesFrame fps: Exit Sub
+
     Dim r As Long, c As Long
     For r = 1 To VIEW_ROWS
         For c = 1 To VIEW_COLS
@@ -127,6 +133,7 @@ End Sub
 ' ---- title / character select (M4a) --------------------
 
 Public Sub RenderTitle()
+    If gRenderShapes Then ParkShapes
     ClearBuf
     Line8 4, "G A U N T L E X"
     Line8 8, "the spreadsheet dungeon"
@@ -138,6 +145,7 @@ Public Sub RenderTitle()
 End Sub
 
 Public Sub RenderVictory()
+    If gRenderShapes Then ParkShapes
     ClearBuf
     Line8 5, "YOU ESCAPED"
     Line8 7, "THE DUNGEON"
@@ -149,6 +157,7 @@ Public Sub RenderVictory()
 End Sub
 
 Public Sub RenderSelect(ByVal cursor As Long)
+    If gRenderShapes Then ParkShapes
     ClearBuf
     Line8 2, "CHOOSE YOUR HERO"
     Dim c As Long, s As String
@@ -208,7 +217,7 @@ Private Sub Poke(ByVal hr As Long, ByVal hc As Long, ByVal glyph As String)
     If vr >= 1 And vr <= VIEW_ROWS And vc >= 1 And vc <= VIEW_COLS Then mBuf(vr, vc) = glyph
 End Sub
 
-Private Sub DrawHud(ByVal ws As Worksheet, ByVal fps As Double)
+Public Sub DrawHud(ByVal ws As Worksheet, ByVal fps As Double)   ' also called by modShapes
     Dim h As Long: h = mHudCol
     ws.Cells(2, h).Value = CharName(gChar) & "   LVL " & gLevelNum
     ws.Cells(4, h).Value = "HEALTH   " & Format$(gHealth, "0000")

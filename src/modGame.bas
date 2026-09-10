@@ -24,6 +24,7 @@ Public gHealth As Long, gScore As Long, gKeys As Long, gPotions As Long, gLives 
 ' ---- entities ----
 Public gEntN As Long
 Public gEntKind() As Long, gEntHR() As Long, gEntHC() As Long, gEntHP() As Long, gEntT() As Long
+Public gEntDir() As Long                  ' 0..7 facing (N NE E SE S SW W NW) - for the sprite renderer
 
 ' ---- generators (index matches modLevel gGen*; 1..gGenN) ----
 Public gGenAlive() As Boolean, gGenHP() As Long, gGenT() As Long
@@ -34,6 +35,7 @@ Public gPrjKind() As Long, gPrjHR() As Long, gPrjHC() As Long
 Public gPrjDR() As Long, gPrjDC() As Long, gPrjLife() As Long
 
 Public gLevelNum As Long
+Public gBlocksChanged As Boolean          ' a gBlock cell was edited this frame (shape renderer re-textures)
 
 Private mMoveAcc As Long, mDrainAcc As Long, mEntAcc As Long, mPrjAcc As Long, mShotAcc As Long
 Private mPotionAcc As Long, mEntTick As Long
@@ -71,7 +73,7 @@ Private Sub LoadCurrentLevel()
     gKeys = 0
 
     ReDim gEntKind(1 To MAX_ENT): ReDim gEntHR(1 To MAX_ENT): ReDim gEntHC(1 To MAX_ENT)
-    ReDim gEntHP(1 To MAX_ENT): ReDim gEntT(1 To MAX_ENT)
+    ReDim gEntHP(1 To MAX_ENT): ReDim gEntT(1 To MAX_ENT): ReDim gEntDir(1 To MAX_ENT)
     gEntN = 0
 
     ReDim gGenAlive(1 To MAX_GEN): ReDim gGenHP(1 To MAX_GEN): ReDim gGenT(1 To MAX_GEN)
@@ -90,6 +92,7 @@ Private Sub LoadCurrentLevel()
     mWarnFood = False: mWarnDie = False
     mThiefT = IIf(gThiefBR > 0, THIEF_DELAY_MS, -1)
     mDeathT = IIf(gDeathBR > 0, DEATH_DELAY_MS, -1)
+    gBlocksChanged = True            ' shape renderer: re-texture the whole maze
     CenterCamera
     Say "Enter level " & gLevelNum
 End Sub
@@ -191,7 +194,7 @@ Private Sub OpenDoorsAt(ByVal hr As Long, ByVal hc As Long)
     For i = 1 To n
         If InMap(br(i), bc(i)) Then
             If gBlock(br(i), bc(i)) = T_DOOR And gKeys > 0 Then
-                gKeys = gKeys - 1: gBlock(br(i), bc(i)) = T_FLOOR
+                gKeys = gKeys - 1: gBlock(br(i), bc(i)) = T_FLOOR: gBlocksChanged = True
             End If
         End If
     Next i
@@ -203,9 +206,9 @@ Private Sub PickupAt(ByVal hr As Long, ByVal hc As Long)
     For i = 1 To n
         If InMap(br(i), bc(i)) Then
             Select Case gBlock(br(i), bc(i))
-                Case T_FOOD:   gHealth = gHealth + FOOD_VALUE: gBlock(br(i), bc(i)) = T_FLOOR
-                Case T_KEY:    gKeys = gKeys + 1:              gBlock(br(i), bc(i)) = T_FLOOR
-                Case T_POTION: gPotions = gPotions + 1:        gBlock(br(i), bc(i)) = T_FLOOR
+                Case T_FOOD:   gHealth = gHealth + FOOD_VALUE: gBlock(br(i), bc(i)) = T_FLOOR: gBlocksChanged = True
+                Case T_KEY:    gKeys = gKeys + 1:              gBlock(br(i), bc(i)) = T_FLOOR: gBlocksChanged = True
+                Case T_POTION: gPotions = gPotions + 1:        gBlock(br(i), bc(i)) = T_FLOOR: gBlocksChanged = True
             End Select
         End If
     Next i
@@ -329,6 +332,7 @@ Private Sub MoveToward(ByVal i As Long, ByVal tr As Long, ByVal tc As Long)
     Dim dr As Long, dc As Long
     dr = Sgn(tr - gEntHR(i)): dc = Sgn(tc - gEntHC(i))
     If dr = 0 And dc = 0 Then Exit Sub
+    gEntDir(i) = DirIndex(dr, dc)
     If FootprintClear(gEntHR(i) + dr, gEntHC(i) + dc) Then
         gEntHR(i) = gEntHR(i) + dr: gEntHC(i) = gEntHC(i) + dc
     ElseIf dr <> 0 And FootprintClear(gEntHR(i) + dr, gEntHC(i)) Then
@@ -433,7 +437,7 @@ Private Sub HitGen(ByVal br As Long, ByVal bc As Long)
             gGenHP(i) = gGenHP(i) - CharHitPower(gChar)
             If gGenHP(i) <= 0 Then
                 gGenAlive(i) = False
-                gBlock(br, bc) = T_FLOOR
+                gBlock(br, bc) = T_FLOOR: gBlocksChanged = True
                 gScore = gScore + SCORE_GEN
             End If
             Exit Sub
@@ -540,7 +544,7 @@ Private Sub UsePotion()
     For i = 1 To gGenN
         If gGenAlive(i) And NearCamera(gGenBR(i) * 2 - 1, gGenBC(i) * 2 - 1, m) Then
             gGenAlive(i) = False
-            gBlock(gGenBR(i), gGenBC(i)) = T_FLOOR
+            gBlock(gGenBR(i), gGenBC(i)) = T_FLOOR: gBlocksChanged = True
             gScore = gScore + SCORE_GEN
         End If
     Next i
@@ -553,6 +557,12 @@ End Sub
 
 Private Function InMap(ByVal br As Long, ByVal bc As Long) As Boolean
     InMap = (br >= 1 And br <= MAP_BLOCK_ROWS And bc >= 1 And bc <= MAP_BLOCK_COLS)
+End Function
+
+' (dr,dc) in {-1,0,1} -> facing 0..7 = N NE E SE S SW W NW  (0,0 -> S)
+Public Function DirIndex(ByVal dr As Long, ByVal dc As Long) As Long
+    Dim t As Variant: t = Array(7, 0, 1, 6, 4, 2, 5, 4, 3)
+    DirIndex = t((dr + 1) * 3 + (dc + 1))
 End Function
 
 Private Function Overlap(ByVal ar As Long, ByVal ac As Long, ByVal br As Long, ByVal bc As Long) As Boolean
@@ -612,6 +622,7 @@ End Sub
 Public Sub DebugSetKeys(ByVal k As Long): gKeys = k: End Sub
 Public Sub DebugSetPotions(ByVal p As Long): gPotions = p: End Sub
 Public Sub DebugSetChar(ByVal c As Long): gChar = c: End Sub
+Public Sub DebugSetRenderShapes(ByVal enabled As Boolean): gRenderShapes = enabled: End Sub
 Public Sub DebugNextLevel()              ' mirrors the engine's post-WON step
     If AdvanceLevel() Then gState = "PLAY" Else gState = "VICTORY"
 End Sub
