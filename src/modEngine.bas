@@ -20,6 +20,7 @@ Public Sub StartGauntlex()
     mRunning = True
 
     On Error GoTo Cleanup
+    TilesDir                            ' unpack embedded tiles before the UI is locked
     Application.EnableEvents = False
     TrapKeys True
     On Error Resume Next

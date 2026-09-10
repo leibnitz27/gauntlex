@@ -25,7 +25,7 @@ $MAP_COLS  = 32
 
 & (Join-Path $PSScriptRoot 'Check-Level.ps1')   # fail the build on an unbeatable level
 
-# the picture-Shape renderer reads reference\genesis-tiles\*.png at runtime
+# the tiles are embedded into the workbook below; slice them if missing
 if (-not (Test-Path (Join-Path $Root 'reference\genesis-tiles\r13_c11.png'))) {
     & (Join-Path $Root 'reference\slice-tiles.ps1')
 }
@@ -85,6 +85,32 @@ try {
         Write-Host "  level $name  <- $($_.Name)"
     }
 
+    # ---- Embedded tiles (ships gauntlex.xlsm without the reference\ folder) ----
+    # Stamp every genesis tile onto a very-hidden sheet as base64; modAssets
+    # unpacks them to %TEMP%\gauntlex\tiles\ on first run. Column format is Text
+    # so a base64 string starting with + / = is stored verbatim, not parsed as a
+    # formula, and the version stamp keeps full precision as a string.
+    $tileDir   = Join-Path $Root 'reference\genesis-tiles'
+    $tileFiles = @(Get-ChildItem $tileDir -Filter '*.png' -File | Sort-Object Name)
+    if ($tileFiles.Count -eq 0) { throw "no tiles in $tileDir - run reference\slice-tiles.ps1" }
+    $ver = ($tileFiles | Measure-Object -Property LastWriteTimeUtc -Maximum).Maximum.ToString('yyyyMMddHHmmss')
+
+    $tiles = Ensure-Sheet 'Tiles'
+    $tiles.Cells.Clear() | Out-Null
+    $tiles.Columns('A:B').NumberFormat = '@'
+    $tiles.Cells.Item(1, 1).Value2 = '__ver__'
+    $tiles.Cells.Item(1, 2).Value2 = $ver
+
+    $row = 2
+    foreach ($tf in $tileFiles) {
+        $tiles.Cells.Item($row, 1).Value2 = $tf.Name
+        $tiles.Cells.Item($row, 2).Value2 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($tf.FullName))
+        $row++
+    }
+    $n = $tileFiles.Count
+    $tiles.Visible = $xlVeryHidden
+    Write-Host "  tiles  $n embedded (ver $ver)"
+
     # ---- VBA modules ----
     # Overwrite code in place when the module already exists: Remove + re-Import
     # of a same-named module in one session does not commit (the import is
@@ -130,7 +156,7 @@ try {
 
     # ---- drop any stray default sheets ----
     foreach ($s in @($wb.Worksheets)) {
-        if ($s.Name -ne 'Screen' -and $s.Name -notmatch '^L\d+$' -and $wb.Worksheets.Count -gt 1) {
+        if ($s.Name -ne 'Screen' -and $s.Name -ne 'Tiles' -and $s.Name -notmatch '^L\d+$' -and $wb.Worksheets.Count -gt 1) {
             $s.Delete()
         }
     }

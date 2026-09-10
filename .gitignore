@@ -13,6 +13,9 @@ gauntlex.xlsm
 # Sliced sprite tiles - regenerate with reference/slice-tiles.ps1
 reference/genesis-tiles/
 
+# Scratch contact sheet - regenerate with build/Make-TileSheet.ps1
+reference/tilesheet.png
+
 # Editor / OS
 .DS_Store
 Thumbs.db

@@ -22,6 +22,7 @@ Private Const ACT_POOL As Long = 80
 
 Private mMz() As Shape
 Private mMzBR() As Long, mMzBC() As Long          ' world block each maze shape shows now
+Private mMzVis() As Boolean                       ' cached .Visible per maze shape (cull off-viewport pad)
 Private mAct() As Shape
 Private mTag() As String                          ' current fill "pic|colour" per shape (1..MZN maze, MZN+1..MZN+ACT_POOL actors)
 Private mSprCache() As String                     ' stream index -> resolved tile path (vbNullChar = unchecked)
@@ -29,6 +30,7 @@ Private mBlockPts As Double
 Private mDir As String
 Private mReady As Boolean, mParked As Boolean, mNeedBlank As Boolean
 Private mLastCamR As Long, mLastCamC As Long
+Private mWonAt As Long                            ' timeGetTime at the first WON frame (0 = not in WON)
 
 ' smoke hook: force a full compile of this module (dead code is still
 ' reference-checked) without running .Fill.UserPicture, which crashes a
@@ -51,7 +53,7 @@ Public Sub ShapesInit()
     Dim ws As Worksheet: Set ws = ThisWorkbook.Worksheets(SCREEN_SHEET)
     ws.Activate
     ws.Cells.Interior.Color = CLR_BG
-    mDir = ThisWorkbook.Path & "\reference\genesis-tiles\"
+    mDir = TilesDir()                 ' embedded tiles, unpacked to %TEMP% on first run
     mBlockPts = gCellPts * 2
 
     Dim s As Shape
@@ -60,6 +62,7 @@ Public Sub ShapesInit()
     Next s
 
     ReDim mMz(1 To MZR * MZC): ReDim mMzBR(1 To MZR * MZC): ReDim mMzBC(1 To MZR * MZC)
+    ReDim mMzVis(1 To MZR * MZC)
     Dim i As Long, r As Long, c As Long
     For r = 0 To MZR - 1
         For c = 0 To MZC - 1
@@ -68,6 +71,7 @@ Public Sub ShapesInit()
             mMz(i).Name = "mz_" & i
             mMz(i).Line.Visible = msoFalse
             mMz(i).Placement = 3
+            mMz(i).Visible = msoFalse             ' frame 1 (always "moved") shows the on-viewport shapes
             mMzBR(i) = -30000: mMzBC(i) = -30000
         Next c
     Next r
@@ -118,25 +122,44 @@ Public Sub ShapesFrame(ByVal fps As Double)
     Dim moved As Boolean: moved = (gCamR <> mLastCamR Or gCamC <> mLastCamC)
     mLastCamR = gCamR: mLastCamC = gCamC
 
+    ' viewport rectangle in points; the pad ring of maze shapes that lands
+    ' outside it (up to a block of scroll-pad overhang) is hidden, else it
+    ' bleeds over the HUD text / gutter to the right.
+    Dim vw As Double, vh As Double
+    vw = VIEW_BLOCK_COLS * mBlockPts: vh = VIEW_BLOCK_ROWS * mBlockPts
+
     Dim pc As String, cl As Long
     If moved Then
         Dim i As Long, r As Long, c As Long, wbr As Long, wbc As Long
+        Dim lft As Double, tp As Double, onView As Boolean
         For r = 0 To MZR - 1
             For c = 0 To MZC - 1
                 i = r * MZC + c + 1
                 wbr = topB + r: wbc = leftB + c
-                mMz(i).Left = (wbc - camBC) * mBlockPts
-                mMz(i).Top = (wbr - camBR) * mBlockPts
+                lft = (wbc - camBC) * mBlockPts
+                tp = (wbr - camBR) * mBlockPts
+                mMz(i).Left = lft
+                mMz(i).Top = tp
                 mMzBR(i) = wbr: mMzBC(i) = wbc
-                MazeCell wbr, wbc, pc, cl
-                Fill mMz(i), i, pc, cl
+                onView = (lft < vw - 0.5) And (tp < vh - 0.5) And _
+                         (lft + mBlockPts > 0.5) And (tp + mBlockPts > 0.5)
+                If onView <> mMzVis(i) Then
+                    mMz(i).Visible = IIf(onView, msoTrue, msoFalse)
+                    mMzVis(i) = onView
+                End If
+                If onView Then
+                    MazeCell wbr, wbc, pc, cl
+                    Fill mMz(i), i, pc, cl
+                End If
             Next c
         Next r
     ElseIf gBlocksChanged Then
         Dim k As Long
         For k = 1 To MZN
-            MazeCell mMzBR(k), mMzBC(k), pc, cl
-            Fill mMz(k), k, pc, cl
+            If mMzVis(k) Then
+                MazeCell mMzBR(k), mMzBC(k), pc, cl
+                Fill mMz(k), k, pc, cl
+            End If
         Next k
     End If
     gBlocksChanged = False
@@ -188,11 +211,23 @@ Private Sub DrawActors(ByVal topB As Long, ByVal leftB As Long)
         End If
     Next i
 
-    ' player - chosen hero, walk frame (mid-stride when idle) + facing
-    Dim pf As Long
-    pf = IIf(gInUp Or gInDown Or gInLeft Or gInRight, frame, 1)
-    n = PutActor(n, gPlHR, gPlHC, 1#, 0, _
-                 SprFile(SPR_HERO_BASE + gChar * SPR_HERO_STRIDE + pf * 8 + DirIndex(gFaceDR, gFaceDC)))
+    ' player - shrinking into the exit on WIN, else walk frame (mid-stride when idle) + facing
+    If gState = "WON" Then
+        If mWonAt = 0 Then mWonAt = timeGetTime()
+        Dim dk As Long: dk = (timeGetTime() - mWonAt) \ WIN_DISSOLVE_MS
+        If dk < DISSOLVE_FRAMES Then
+            Dim dpic As String
+            dpic = SprFile(SPR_HERO_BASE + gChar * SPR_HERO_STRIDE + SPR_HERO_DISSOLVE + dk)
+            If dpic <> "" Then n = PutActor(n, gPlHR, gPlHC, 1# - dk * 0.18, 0, dpic)
+        End If
+        ' dk >= DISSOLVE_FRAMES: gone - draw nothing, the pool slot is hidden below
+    Else
+        mWonAt = 0
+        Dim pf As Long
+        pf = IIf(gInUp Or gInDown Or gInLeft Or gInRight, frame, 1)
+        n = PutActor(n, gPlHR, gPlHC, 1#, 0, _
+                     SprFile(SPR_HERO_BASE + gChar * SPR_HERO_STRIDE + pf * 8 + DirIndex(gFaceDR, gFaceDC)))
+    End If
 
     For i = n + 1 To ACT_POOL
         mAct(i).Visible = msoFalse

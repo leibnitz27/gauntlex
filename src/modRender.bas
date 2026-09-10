@@ -93,7 +93,9 @@ Private Sub SquareColumns(ByVal ws As Worksheet)
         ws.Columns(1).ColumnWidth = mid
         If ws.Columns(1).Width > gCellPts Then hi = mid Else lo = mid
     Next i
-    ws.Range(ws.Columns(1), ws.Columns(VIEW_COLS)).ColumnWidth = ws.Columns(1).ColumnWidth
+    ' include the HUD gap columns so the gutter is a known width and the shape
+    ' maze's scroll-pad overhang lands in it, not on the HUD text
+    ws.Range(ws.Columns(1), ws.Columns(VIEW_COLS + HUD_GAP_COLS)).ColumnWidth = ws.Columns(1).ColumnWidth
 End Sub
 
 Public Sub RenderFrame(ByVal fps As Double)

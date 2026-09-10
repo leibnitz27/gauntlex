@@ -48,6 +48,12 @@ confirmed tile-by-tile against `tilesheet.png` (`build\Make-TileSheet.ps1`).
 
 | tile(s) | is |
 |---|---|
+| `r06 c00` | **EXIT** plaque (plain "EXIT", white on black) - the exit block |
+| `r06 c01` | "EXIT TO 6" plaque (destination baked in; unused) |
+| `r06 c02-c04` | skeleton / bones - dead-hero marker (not yet wired up) |
+| `r06 c25` | **potion** - the one we use (`SPR_ITEM_POT`) |
+| `r06 c26-c33` | typed potions (Genesis GIV only, not in the arcade): c26 brown, c27 skull, c28 lightning, c29 sword, c30 arrow, c31 acid, c32 fireball, c33 shield. Unused - arcade potion is a generic smart-bomb. |
+| `r07 c29`-`r08 c36` | large red demon/dragon **boss** - multi-tile composite frames (each pose spans several 16px tiles). Genesis GIV only, no arcade equivalent. Unused. |
 | `r12 c00-c02` | Elf hero frames |
 | `r12 c03-c10` | Elf's arrow (fired), 8 directions |
 | `r12 c11-c15` | Elf shrinking into a portal (teleport) |
