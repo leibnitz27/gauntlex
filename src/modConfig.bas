@@ -30,10 +30,11 @@ Public Const CELL_DEFAULT_PTS As Double = 20#     ' half-cell size when the wind
 Public Const CELL_MIN_PTS     As Double = 8#
 Public Const CELL_MAX_PTS     As Double = 60#     ' generous ceiling; real windows land ~24-46
 
-Public Const HUD_PANEL_PTS    As Double = 240#    ' width reserved right of the playfield for the HUD
+Public Const HUD_PANEL_PTS    As Double = 220#    ' width reserved right of the playfield for the HUD
 Public Const HUD_COL_WIDTH    As Double = 24#     ' chars, for the HUD text column
-Public Const HUD_GAP_COLS     As Long = 3         ' blank half-cells between playfield and HUD; >= 2 so the
-                                                 ' shape maze's 1-block scroll-pad can't overhang the HUD text
+Public Const HUD_GAP_COLS     As Long = 1         ' blank half-cells between playfield and HUD. The shape
+                                                 ' maze's scroll-pad ring is culled outside the viewport
+                                                 ' (modShapes) so it can't overhang the HUD text.
 
 Public gCellPts As Double                         ' current half-cell render size, points
 
