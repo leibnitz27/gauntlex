@@ -1,5 +1,6 @@
-# Built artifact - rebuild from src\ with build\Build-Workbook.ps1
-gauntlex.xlsm
+# gauntlex.xlsm is now tracked - it is self-contained (tiles embedded) and
+# shipped from the repo. Rebuild from src\ with build\Build-Workbook.ps1 and
+# commit it when you want a new release.
 
 # Excel lock / temp files
 ~$*.xls*
